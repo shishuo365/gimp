@@ -8,8 +8,10 @@ plugin_sources = [
 ]
 
 if platform_windows
+  message('gimp_plugins_rc=@0@'.format(gimp_plugins_rc))
   plugin_sources += windows.compile_resources(
-    gimp_plugins_rc,
+    gimp_plugins_rc_file,
+#    depends: [gimp_plugins_rc,],
     args: [
       '--define', 'ORIGINALFILENAME_STR="@0@"'.format(plug_in_name + '-c.exe'),
       '--define', 'INTERNALNAME_STR="@0@"'    .format(plug_in_name),

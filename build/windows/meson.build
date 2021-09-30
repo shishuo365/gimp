@@ -27,6 +27,13 @@ gimp_plugins_rc = custom_target('git-version.h build-time-dependency for gimp_pl
   depends: [gitversion_h],
   output:  ['gimp-plug-ins.rc']
 ).full_path()
+message('gimp_plugins_rc=@0@'.format(gimp_plugins_rc))
+gimp_plugins_rc_full = fs.name(gimp_plugins_rc)
+#gimp_plugins_rc_full = fs.name(gimp_plugins_rc.full_path())
+gimp_plugins_rc_file=fs.name(gimp_plugins_rc_full)
+message('file=@0@'.format(gimp_plugins_rc_file))
+message('gimp_plugins_rc=@0@'.format(gimp_plugins_rc_full))
+
 
 gimp_app_rc = custom_target('git-version.h build-time-dependency for gimp.rc',
   build_by_default: true,
@@ -35,3 +42,4 @@ gimp_app_rc = custom_target('git-version.h build-time-dependency for gimp.rc',
   depends: [gitversion_h],
   output:  ['gimp.rc']
 ).full_path()
+gimp_app_rc_file = fs.name(gimp_app_rc)

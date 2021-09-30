@@ -84,6 +84,7 @@ so_version = '@0@.@1@.@2@'.format(lt_current, lt_age, lt_revision)
 
 pkgconfig = import('pkgconfig')
 i18n      = import('i18n')
+fs        = import('fs')
 gnome     = import('gnome')
 pythonmod = import('python')
 simd      = import('unstable-simd')
