@@ -221,7 +221,7 @@ This procedure returns the image's simulation color profile, or NULL if the imag
 has no simulation color profile assigned.
 HELP
 
-    &mitch_pdb_misc('2022', '2.10');
+    &alxsa_pdb_misc('2022', '3.0');
 
     $lib_private = 1;
 
@@ -270,7 +270,7 @@ babl space matching the profile. You must call this procedure before
 adding layers to the image.
 HELP
 
-    &mitch_pdb_misc('2022', '2.10');
+    &alxsa_pdb_misc('2022', '3.0');
 
     $lib_private = 1;
 
@@ -323,7 +323,7 @@ profile. You must call this procedure before adding layers to the
 image.
 HELP
 
-    &mitch_pdb_misc('2022', '2.10');
+    &alxsa_pdb_misc('2022', '3.0');
 
     @inargs = (
         { name => 'image', type => 'image',
