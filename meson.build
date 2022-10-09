@@ -1246,6 +1246,15 @@ conf.set('HAVE_GETTEXT', true)
 # Enable support for multiprocessing
 conf.set10('ENABLE_MP', get_option('enable-multiproc'))
 
+# Enable support for OpenMP
+openmp = dependency('openmp', required : false)
+if openmp.found()
+  openmp_enabled = true
+else
+  openmp_enabled = true
+endif
+conf.set('ENABLE_OPENMP', openmp_enabled)
+
 # Check for available functions
 foreach fn : [
     { 'm': 'HAVE_ALLOCA',                   'v': 'alloca', },
