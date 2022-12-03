@@ -73,6 +73,13 @@ static GimpValueArray *jpegxl_save (GimpProcedure        *procedure,
                                     const GimpValueArray *args,
                                     gpointer              run_data);
 
+static void      create_cmyk_layer (GimpImage            *image,
+                                    GimpLayer            *layer,
+                                    const Babl           *space,
+                                    const Babl           *type,
+                                    gpointer              picture_buffer,
+                                    gpointer              key_buffer);
+
 
 G_DEFINE_TYPE (JpegXL, jpegxl, GIMP_TYPE_PLUG_IN)
 
@@ -209,6 +216,100 @@ jpegxl_create_procedure (GimpPlugIn  *plug_in,
   return procedure;
 }
 
+/* The Key data is stored in a separate extra
+ * channel. We combine the CMY values from the
+ * main image with the K values to create
+ * the final layer buffer.
+ */
+static void
+create_cmyk_layer (GimpImage  *image,
+                   GimpLayer  *layer,
+                   const Babl *type,
+                   const Babl *space,
+                   gpointer    cmy_data,
+                   gpointer    key_data)
+{
+  const Babl         *cmy_format = NULL;
+  const Babl         *key_format = NULL;
+  GeglBuffer         *output_buffer;
+  GeglBuffer         *cmy_buffer;
+  GeglBuffer         *key_buffer;
+  GeglBufferIterator *iter;
+  gint                width;
+  gint                height;
+
+  width  = gimp_image_get_width (image);
+  height = gimp_image_get_height (image);
+
+  gimp_image_insert_layer (image, layer, NULL, 0);
+
+  cmy_format = babl_format_new (babl_model ("cmyk"),
+                                type,
+                                babl_component ("cyan"),
+                                babl_component ("magenta"),
+                                babl_component ("yellow"),
+                                babl_component ("key"),
+                                NULL);
+
+  key_format = babl_format_new (babl_model ("Y"),
+                                type,
+                                babl_component ("Y"),
+                                NULL);
+
+  cmy_format = babl_format_with_space (babl_format_get_encoding (cmy_format),
+                                       space);
+  key_format = babl_format_with_space (babl_format_get_encoding (key_format),
+                                       space);
+
+  output_buffer = gimp_drawable_get_buffer (GIMP_DRAWABLE (layer));
+  cmy_buffer = gegl_buffer_new (GEGL_RECTANGLE (0, 0, width, height),
+                                cmy_format);
+  key_buffer = gegl_buffer_new (GEGL_RECTANGLE (0, 0, width, height),
+                                key_format);
+
+  gegl_buffer_set (cmy_buffer, GEGL_RECTANGLE (0, 0, width, height), 0,
+                   cmy_format, cmy_data, GEGL_AUTO_ROWSTRIDE);
+  gegl_buffer_set (key_buffer, GEGL_RECTANGLE (0, 0, width, height), 0,
+                   key_format, key_data, GEGL_AUTO_ROWSTRIDE);
+
+  iter = gegl_buffer_iterator_new (output_buffer,
+                                   GEGL_RECTANGLE (0, 0, width, height), 0,
+                                   cmy_format, GEGL_BUFFER_READWRITE,
+                                   GEGL_ABYSS_NONE, 3);
+
+  gegl_buffer_iterator_add (iter, cmy_buffer,
+                            GEGL_RECTANGLE (0, 0, width, height), 0,
+                            cmy_format, GEGL_ACCESS_READ, GEGL_ABYSS_NONE);
+  gegl_buffer_iterator_add (iter, key_buffer,
+                            GEGL_RECTANGLE (0, 0, width, height), 0,
+                            key_format, GEGL_ACCESS_READ, GEGL_ABYSS_NONE);
+
+  while (gegl_buffer_iterator_next (iter))
+    {
+      guchar *pixel = iter->items[0].data;
+      guchar *cmy   = iter->items[1].data;
+      guchar *k     = iter->items[2].data;
+      gint length   = iter->length;
+
+      while (length--)
+        {
+          pixel[0] = cmy[0];
+          pixel[1] = cmy[1];
+          pixel[2] = cmy[2];
+          pixel[3] = k[0];
+
+          pixel += 4;
+          cmy += 4;
+          k++;
+        }
+    }
+
+  g_object_unref (output_buffer);
+  g_object_unref (cmy_buffer);
+  g_object_unref (key_buffer);
+  g_free (key_data);
+}
+
 static GimpImage *
 load_image (GFile        *file,
             GimpRunMode   runmode,
@@ -226,16 +327,20 @@ load_image (GFile        *file,
   JxlDecoderStatus  status;
   JxlPixelFormat    pixel_format;
   JxlColorEncoding  color_encoding;
-  size_t            icc_size = 0;
-  GimpColorProfile *profile = NULL;
-  gboolean          loadlinear = FALSE;
+  size_t            icc_size        = 0;
+  GimpColorProfile *profile         = NULL;
+  gboolean          loadlinear      = FALSE;
   size_t            channel_depth;
   size_t            result_size;
   gpointer          picture_buffer;
-
+  gpointer          key_buffer      = NULL;
+  gboolean          is_cmyk         = FALSE;
+  gint              cmyk_channel_id = -1;
   GimpImage        *image;
   GimpLayer        *layer;
   GeglBuffer       *buffer;
+  const Babl       *space           = NULL;
+  const Babl       *type;
   GimpPrecision     precision_linear;
   GimpPrecision     precision_non_linear;
 
@@ -401,6 +506,7 @@ load_image (GFile        *file,
       channel_depth = 4;
       precision_linear = GIMP_PRECISION_FLOAT_LINEAR;
       precision_non_linear = GIMP_PRECISION_FLOAT_NON_LINEAR;
+      type = babl_type ("float");
     }
   else if (basicinfo.bits_per_sample <= 8)
     {
@@ -408,6 +514,7 @@ load_image (GFile        *file,
       channel_depth = 1;
       precision_linear = GIMP_PRECISION_U8_LINEAR;
       precision_non_linear = GIMP_PRECISION_U8_NON_LINEAR;
+      type = babl_type ("u8");
     }
   else
     {
@@ -415,6 +522,7 @@ load_image (GFile        *file,
       channel_depth = 2;
       precision_linear = GIMP_PRECISION_U16_LINEAR;
       precision_non_linear = GIMP_PRECISION_U16_NON_LINEAR;
+      type = babl_type ("u16");
     }
 
   if (basicinfo.num_color_channels == 1) /* grayscale */
@@ -438,6 +546,23 @@ load_image (GFile        *file,
       else /* RGB no alpha */
         {
           pixel_format.num_channels = 3;
+        }
+    }
+
+  /* Check for extra channels */
+  for (gint32 i = 0; i < basicinfo.num_extra_channels; i++)
+    {
+      JxlExtraChannelInfo extra;
+
+      if (JXL_DEC_SUCCESS != JxlDecoderGetExtraChannelInfo (decoder, i, &extra))
+        break;
+
+      /* K channel for CMYK images */
+      if (extra.type == JXL_CHANNEL_BLACK)
+        {
+          is_cmyk = TRUE;
+          cmyk_channel_id = i;
+          pixel_format.num_channels = 4;
         }
     }
 
@@ -485,7 +610,7 @@ load_image (GFile        *file,
         }
     }
 
-  if (!profile)
+  if (! profile)
     {
       if (JxlDecoderGetICCProfileSize (decoder, &pixel_format,
                                        JXL_COLOR_PROFILE_TARGET_DATA,
@@ -545,7 +670,7 @@ load_image (GFile        *file,
     }
 
   picture_buffer = g_try_malloc (result_size);
-  if (!picture_buffer)
+  if (! picture_buffer)
     {
       g_set_error (error, G_FILE_ERROR, 0, "Memory could not be allocated.");
       if (profile)
@@ -572,6 +697,55 @@ load_image (GFile        *file,
       return NULL;
     }
 
+  /* Loading key channel buffer data */
+  if (is_cmyk)
+    {
+      if (JxlDecoderExtraChannelBufferSize (decoder, &pixel_format,
+                                            &result_size, cmyk_channel_id)
+          != JXL_DEC_SUCCESS)
+        {
+          g_set_error (error, G_FILE_ERROR, 0,
+                       "ERROR: JxlDecoderExtraChannelBufferSize failed");
+          if (profile)
+            g_object_unref (profile);
+
+          JxlThreadParallelRunnerDestroy (runner);
+          JxlDecoderDestroy (decoder);
+          g_free (memory);
+          return NULL;
+        }
+
+      key_buffer = g_try_malloc (result_size);
+
+      if (! key_buffer)
+        {
+          g_set_error (error, G_FILE_ERROR, 0, "Memory could not be allocated.");
+
+          if (profile)
+            g_object_unref (profile);
+
+          JxlThreadParallelRunnerDestroy (runner);
+          JxlDecoderDestroy (decoder);
+          g_free (memory);
+          return NULL;
+        }
+
+      if (JxlDecoderSetExtraChannelBuffer (decoder, &pixel_format, key_buffer,
+                                           result_size, cmyk_channel_id)
+          != JXL_DEC_SUCCESS)
+        {
+          g_set_error (error, G_FILE_ERROR, 0,
+                       "ERROR: JxlDecoderSetExtraChannelBuffer failed");
+          if (profile)
+            g_object_unref (profile);
+
+          JxlThreadParallelRunnerDestroy (runner);
+          JxlDecoderDestroy (decoder);
+          g_free (memory);
+          return NULL;
+        }
+    }
+
   status = JxlDecoderProcessInput (decoder);
   if (status != JXL_DEC_FULL_IMAGE)
     {
@@ -587,7 +761,6 @@ load_image (GFile        *file,
       g_free (memory);
       return NULL;
     }
-
 
   if (basicinfo.num_color_channels == 1) /* grayscale */
     {
@@ -607,7 +780,7 @@ load_image (GFile        *file,
                               (basicinfo.alpha_bits > 0) ? GIMP_GRAYA_IMAGE : GIMP_GRAY_IMAGE, 100,
                               gimp_image_get_default_new_layer_mode (image));
     }
-  else /* RGB */
+  else /* RGB or CMYK */
     {
       image = gimp_image_new_with_precision (basicinfo.xsize, basicinfo.ysize, GIMP_RGB,
                                              loadlinear ? precision_linear : precision_non_linear);
@@ -618,24 +791,38 @@ load_image (GFile        *file,
             {
               gimp_image_set_color_profile (image, profile);
             }
+          else if (is_cmyk && gimp_color_profile_is_cmyk (profile))
+            {
+              gimp_image_set_simulation_profile (image, profile);
+
+              space = gimp_color_profile_get_space (profile,
+                                                    GIMP_COLOR_RENDERING_INTENT_RELATIVE_COLORIMETRIC,
+                                                    NULL);
+            }
         }
 
       layer = gimp_layer_new (image, "Background",
                               basicinfo.xsize, basicinfo.ysize,
                               (basicinfo.alpha_bits > 0) ? GIMP_RGBA_IMAGE : GIMP_RGB_IMAGE, 100,
                               gimp_image_get_default_new_layer_mode (image));
-
     }
 
-  gimp_image_insert_layer (image, layer, NULL, 0);
+  if (is_cmyk)
+    {
+      create_cmyk_layer (image, layer, type, space,
+                         picture_buffer, key_buffer);
+    }
+  else
+    {
+      gimp_image_insert_layer (image, layer, NULL, 0);
 
-  buffer = gimp_drawable_get_buffer (GIMP_DRAWABLE (layer));
+      buffer = gimp_drawable_get_buffer (GIMP_DRAWABLE (layer));
 
-  gegl_buffer_set (buffer, GEGL_RECTANGLE (0, 0, basicinfo.xsize, basicinfo.ysize), 0,
-                   NULL, picture_buffer, GEGL_AUTO_ROWSTRIDE);
+      gegl_buffer_set (buffer, GEGL_RECTANGLE (0, 0, basicinfo.xsize, basicinfo.ysize), 0,
+                       NULL, picture_buffer, GEGL_AUTO_ROWSTRIDE);
 
-  g_object_unref (buffer);
-
+      g_object_unref (buffer);
+  }
 
   g_free (picture_buffer);
   if (profile)
