@@ -38,6 +38,7 @@
 
 #include "widgets/gimpcairo-wilber.h"
 
+#include "gimpgegltool.h"
 #include "gimptool.h"
 #include "gimptoolcontrol.h"
 #include "gimptransformgridtool.h"
@@ -771,8 +772,9 @@ tool_manager_tool_changed (GimpContext     *user_context,
 
   tool_manager_select_tool (tool_manager, new_tool);
 
-  /* Auto-activate any transform tools */
-  if (GIMP_IS_TRANSFORM_GRID_TOOL (new_tool))
+  /* Auto-activate any transform or GEGL operation tools */
+  if (GIMP_IS_TRANSFORM_GRID_TOOL (new_tool) ||
+      GIMP_IS_GEGL_TOOL (new_tool))
     {
       GimpDisplay *new_display;
 
