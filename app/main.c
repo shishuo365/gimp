@@ -874,7 +874,7 @@ WinMain (struct HINSTANCE__ *hInstance,
 static void
 wait_console_window (void)
 {
-  FILE *console = fopen ("CONOUT$", "w");
+  FILE *console = g_fopen ("CONOUT$", "w");
 
   SetConsoleTitleW (g_utf8_to_utf16 (_("GIMP output. Type any character to close this window."), -1, NULL, NULL, NULL));
   fprintf (console, _("(Type any character to close this window)\n"));
