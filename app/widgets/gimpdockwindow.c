@@ -404,6 +404,8 @@ gimp_dock_window_constructed (GObject *object)
       GIMP_DOCK_COLUMNS (gimp_dock_columns_new (dock_window->p->context,
                                                 dock_window->p->dialog_factory,
                                                 dock_window->p->ui_manager));
+    g_object_add_weak_pointer (G_OBJECT (dock_window->p->dock_columns),
+                               &dock_window->p->dock_columns);
     gtk_box_pack_start (GTK_BOX (vbox), GTK_WIDGET (dock_window->p->dock_columns),
                         TRUE, TRUE, 0);
     gtk_widget_show (GTK_WIDGET (dock_window->p->dock_columns));
@@ -867,10 +869,7 @@ gimp_dock_window_update_title_idle (GimpDockWindow *dock_window)
 {
   gchar *desc;
 
-  /* The idle function may happen in some weird in-between after
-   * gtk_widget_destroy() was called.
-   */
-  if (gtk_widget_in_destruction (dock_window))
+  if (dock_window->p->dock_columns != NULL)
     return G_SOURCE_REMOVE;
 
   desc = gimp_dock_window_get_description (dock_window, FALSE /*complete*/);
