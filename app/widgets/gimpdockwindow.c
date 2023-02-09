@@ -865,8 +865,15 @@ gimp_dock_window_update_title (GimpDockWindow *dock_window)
 static gboolean
 gimp_dock_window_update_title_idle (GimpDockWindow *dock_window)
 {
-  gchar *desc = gimp_dock_window_get_description (dock_window,
-                                                  FALSE /*complete*/);
+  gchar *desc;
+
+  /* The idle function may happen in some weird in-between after
+   * gtk_widget_destroy() was called.
+   */
+  if (gtk_widget_in_destruction (dock_window))
+    return G_SOURCE_REMOVE;
+
+  desc = gimp_dock_window_get_description (dock_window, FALSE /*complete*/);
   if (desc)
     {
       gtk_window_set_title (GTK_WINDOW (dock_window), desc);
@@ -875,7 +882,7 @@ gimp_dock_window_update_title_idle (GimpDockWindow *dock_window)
 
   dock_window->p->update_title_idle_id = 0;
 
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
 static gchar *
