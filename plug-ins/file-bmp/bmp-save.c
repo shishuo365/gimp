@@ -924,10 +924,15 @@ write_image (FILE     *f,
 }
 
 static gboolean
-format_sensitive_callback (gint     value,
+format_sensitive_callback (GObject *config,
                            gpointer data)
 {
+  gint value;
   gint channels = GPOINTER_TO_INT (data);
+
+  g_object_get (config,
+                "rgb-format", &value,
+                NULL);
 
   switch (value)
     {
@@ -980,9 +985,9 @@ save_dialog (GimpProcedure *procedure,
   GtkWidget    *dialog;
   GtkWidget    *toggle;
   GtkWidget    *vbox;
-  GtkWidget    *frame;
   GtkListStore *store;
   GtkWidget    *combo;
+  gboolean      is_format_sensitive;
   gboolean      run;
 
   dialog = gimp_procedure_dialog_new (procedure,
@@ -991,27 +996,18 @@ save_dialog (GimpProcedure *procedure,
 
   gtk_window_set_resizable (GTK_WINDOW (dialog), FALSE);
 
-  vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
-  gtk_container_set_border_width (GTK_CONTAINER (vbox), 12);
-  gtk_box_pack_start (GTK_BOX (gimp_export_dialog_get_content_area (dialog)),
-                      vbox, TRUE, TRUE, 0);
-  gtk_widget_show (vbox);
-
   /* Run-Length Encoded */
-  toggle = gimp_prop_check_button_new (config, "use-rle",
-                                       _("_Run-Length Encoded"));
-  gtk_box_pack_start (GTK_BOX (vbox), toggle, FALSE, FALSE, 0);
-
-  if (channels > 1 || bpp == 1)
-    gtk_widget_set_sensitive (toggle, FALSE);
+  gimp_procedure_dialog_set_sensitive (GIMP_PROCEDURE_DIALOG (dialog),
+                                       "use-rle",
+                                       (channels > 1 || bpp == 1),
+                                       NULL, NULL, FALSE);
 
   /* Compatibility Options */
-  frame = gimp_frame_new (_("Compatibility"));
-  gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
-  gtk_widget_show (frame);
-
-  toggle = gimp_prop_check_button_new (config, "write-color-space",
-                                       _("_Write color space information"));
+  gimp_procedure_dialog_get_label (GIMP_PROCEDURE_DIALOG (dialog),
+                                   "color-space-title", _("Compatibility"));
+  toggle = gimp_procedure_dialog_get_widget (GIMP_PROCEDURE_DIALOG (dialog),
+                                             "write-color-space",
+                                             GTK_TYPE_CHECK_BUTTON);
   gimp_help_set_help_data (toggle,
                            _("Some applications can not read BMP images that "
                              "include color space information. GIMP writes "
@@ -1019,16 +1015,11 @@ save_dialog (GimpProcedure *procedure,
                              "this option will cause GIMP to not write color "
                              "space information to the file."),
                            NULL);
-  gtk_container_add (GTK_CONTAINER (frame), toggle);
+  gimp_procedure_dialog_fill_frame (GIMP_PROCEDURE_DIALOG (dialog),
+                                    "color-space-frame", "color-space-title",
+                                    FALSE, "write-color-space");
 
-  /* RGB Encoding Pptions */
-  frame = gimp_frame_new (_("RGB Encoding"));
-  gtk_box_pack_start (GTK_BOX (vbox), frame, FALSE, FALSE, 0);
-  gtk_widget_show (frame);
-
-  if (channels < 3)
-    gtk_widget_set_sensitive (frame, FALSE);
-
+  /* RGB Encoding Options */
   store = gimp_int_store_new (_("16 bit (R5 G6 B5)"),    RGB_565,
                               _("16 bit (A1 R5 G5 B5)"), RGBA_5551,
                               _("16 bit (X1 R5 G5 B5)"), RGB_555,
@@ -1036,13 +1027,44 @@ save_dialog (GimpProcedure *procedure,
                               _("32 bit (A8 R8 G8 B8)"), RGBA_8888,
                               _("32 bit (X8 R8 G8 B8)"), RGBX_8888,
                               NULL);
-  combo = gimp_prop_int_combo_box_new (config, "rgb-format",
-                                       GIMP_INT_STORE (store));
-  gtk_container_add (GTK_CONTAINER (frame), combo);
+  combo = gimp_procedure_dialog_get_int_combo (GIMP_PROCEDURE_DIALOG (dialog),
+                                               "rgb-format",
+                                               GIMP_INT_STORE (store));
+  g_object_set (G_OBJECT (combo),
+                "label", NULL,
+                NULL);
 
-  gimp_int_combo_box_set_sensitivity (GIMP_INT_COMBO_BOX (combo),
-                                      format_sensitive_callback,
-                                      GINT_TO_POINTER (channels), NULL);
+  /* Determine if RGB Format combo should be initially sensitive */
+  is_format_sensitive = format_sensitive_callback (config,
+                                                   GINT_TO_POINTER (channels));
+  gimp_procedure_dialog_set_sensitive (GIMP_PROCEDURE_DIALOG (dialog),
+                                       "rgb-format",
+                                       is_format_sensitive,
+                                       NULL, NULL, FALSE);
+
+  gimp_procedure_dialog_get_label (GIMP_PROCEDURE_DIALOG (dialog),
+                                   "rgb-format-title", _("RGB Encoding"));
+  gimp_procedure_dialog_fill_frame (GIMP_PROCEDURE_DIALOG (dialog),
+                                    "rgb-format-frame", "rgb-format-title",
+                                    FALSE, "rgb-format");
+
+  gimp_procedure_dialog_set_sensitive (GIMP_PROCEDURE_DIALOG (dialog),
+                                       "rgb-format-frame",
+                                       (channels < 3),
+                                       NULL, NULL, FALSE);
+
+  /* Formatting the dialog */
+  vbox = gimp_procedure_dialog_fill_box (GIMP_PROCEDURE_DIALOG (dialog),
+                                         "bmp-save-vbox",
+                                         "use-rle",
+                                         "color-space-frame",
+                                         "rgb-format-frame",
+                                         NULL);
+  gtk_box_set_spacing (GTK_BOX (vbox), 12);
+
+  gimp_procedure_dialog_fill (GIMP_PROCEDURE_DIALOG (dialog),
+                              "bmp-save-vbox",
+                              NULL);
 
   gtk_widget_show (dialog);
 

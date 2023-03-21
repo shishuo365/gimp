@@ -192,24 +192,24 @@ bmp_create_procedure (GimpPlugIn  *plug_in,
                                           "bmp");
 
       GIMP_PROC_ARG_BOOLEAN (procedure, "use-rle",
-                             "Use RLE",
-                             "Use run-lengh-encoding compression "
-                             "(only valid for 4 and 8-bit indexed images)",
+                             _("Ru_n-Length Encoded"),
+                             _("Use run-length-encoding compression "
+                               "(only valid for 4 and 8-bit indexed images)"),
                              FALSE,
                              G_PARAM_READWRITE);
 
       GIMP_PROC_ARG_BOOLEAN (procedure, "write-color-space",
-                             "Write color space information",
-                             "Whether or not to write BITMAPV5HEADER "
-                             "color space data",
+                             _("_Write color space information"),
+                             _("Whether or not to write BITMAPV5HEADER "
+                               "color space data"),
                              TRUE,
                              G_PARAM_READWRITE);
 
       GIMP_PROC_ARG_INT (procedure, "rgb-format",
-                         "RGB format",
-                         "Export format for RGB images "
-                         "(0=RGB_565, 1=RGBA_5551, 2=RGB_555, 3=RGB_888,"
-                         " 4=RGBA_8888, 5=RGBX_8888)",
+                         _("R_GB format"),
+                         _("Export format for RGB images "
+                           "(0=RGB_565, 1=RGBA_5551, 2=RGB_555, 3=RGB_888, "
+                           "4=RGBA_8888, 5=RGBX_8888)"),
                          0, 5, 3,
                          G_PARAM_READWRITE);
     }
