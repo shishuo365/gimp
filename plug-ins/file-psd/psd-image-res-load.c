@@ -281,8 +281,8 @@ get_image_resource_header (PSDimageres   *res_a,
   res_a->data_len = GUINT32_FROM_BE (res_a->data_len);
   res_a->data_start = g_seekable_tell (G_SEEKABLE (input));
 
-  IFDBG(2) g_debug ("Type: %.4s, id: %d, start: %" G_GOFFSET_FORMAT ", len: %" G_GSIZE_FORMAT,
-                    res_a->type, res_a->id, res_a->data_start, res_a->data_len);
+  IFDBG (2) g_debug ("Type: %.4s, id: %d, start: %" G_GOFFSET_FORMAT ", len: %" G_GSIZE_FORMAT,
+                     res_a->type, res_a->id, res_a->data_start, res_a->data_len);
 
   return 0;
 }
@@ -1230,7 +1230,8 @@ load_resource_1045 (const PSDimageres  *res_a,
   block_rem = res_a->data_len;
   while (block_rem > 1)
     {
-      str = fread_unicode_string (&read_len, &write_len, 1, input, error);
+      str = fread_unicode_string (&read_len, &write_len, 1, FALSE, input,
+                                  error);
       if (*error)
         return -1;
 
