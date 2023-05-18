@@ -88,6 +88,12 @@ static void             deleave_rgb_row      (IFF_UByte            *bitplanes,
                                               gint                  nPlanes,
                                               gint                  pixel_size);
 
+static void             deleave_ham_row      (const guchar         *gimp_cmap,
+                                              IFF_UByte            *bitplanes,
+                                              guchar               *pixel_row,
+                                              gint                  width,
+                                              gint                  nPlanes);
+
 static void             pbm_row              (IFF_UByte            *bitplanes,
                                               guchar               *pixel_row,
                                               gint                  width);
@@ -151,7 +157,7 @@ iff_create_procedure (GimpPlugIn  *plug_in,
       gimp_file_procedure_set_mime_types (GIMP_FILE_PROCEDURE (procedure),
                                           "image/x-ilbm");
       gimp_file_procedure_set_extensions (GIMP_FILE_PROCEDURE (procedure),
-                                          "iff,ilbm,lbm,acbm");
+                                          "iff,ilbm,lbm,acbm,ham,ham6");
       gimp_file_procedure_set_magics (GIMP_FILE_PROCEDURE (procedure),
                                       "0,string,FORM");
     }
@@ -248,6 +254,7 @@ load_image (GFile        *file,
       gint               pixel_size   = 1;
       gint               y_height     = 0;
       gboolean           ehb_mode     = FALSE;
+      gboolean           ham_mode     = FALSE;
 
       if (! true_image || ! bitMapHeader)
         {
@@ -275,6 +282,9 @@ load_image (GFile        *file,
         {
           if (camg->viewportMode & (1 << 7))
             ehb_mode = TRUE;
+          if (camg->viewportMode & (1 << 11) &&
+              (nPlanes == 5 || nPlanes == 6))
+            ham_mode = TRUE;
         }
 
       /* Load palette if it exists */
@@ -309,6 +319,9 @@ load_image (GFile        *file,
             }
         }
 
+      if (ham_mode)
+        pixel_size = 3;
+
       if (pixel_size == 4)
         {
           image_type = GIMP_RGBA_IMAGE;
@@ -336,6 +349,7 @@ load_image (GFile        *file,
       buffer = gimp_drawable_get_buffer (GIMP_DRAWABLE (layer));
 
       bitplanes = true_image->body->chunkData;
+
       /* Loading rows */
       for (gint j = 0; j < height; j++)
         {
@@ -348,6 +362,8 @@ load_image (GFile        *file,
             pbm_row (bitplanes, pixel_row, width);
           else if (pixel_size == 1)
             deleave_indexed_row (bitplanes, pixel_row, width, nPlanes);
+          else if (ham_mode)
+            deleave_ham_row (gimp_cmap, bitplanes, pixel_row, width, nPlanes);
           else
             deleave_rgb_row (bitplanes, pixel_row, width, nPlanes, pixel_size);
 
@@ -403,6 +419,83 @@ deleave_indexed_row (IFF_UByte *bitplanes,
   /* Associate palette with pixels */
   for (gint i = 0; i < width; i++)
     pixel_row[i] = index[i];
+}
+
+static void
+deleave_ham_row (const guchar *gimp_cmap,
+                 IFF_UByte    *bitplanes,
+                 guchar       *pixel_row,
+                 gint          width,
+                 gint          nPlanes)
+{
+  gint   row_length    = ((width + 15) / 16) * 2;
+  gint   prior_rgb[3]  = {0, 0, 0};
+  gint   current_index = 0;
+
+  /* Deleave rows */
+  for (gint i = 0; i < row_length; i++)
+    {
+      for (gint j = 0; j < 8; j++)
+        {
+          guint8 bitmask = (1 << (8 - j)) - (1 << (7 - j));
+          guint8 count   = 0;
+          guint8 color   = 0;
+          guint8 index   = 0;
+
+          for (gint k = 0; k < nPlanes; k++)
+            {
+              if (bitplanes[i + (row_length * k)] & bitmask)
+                {
+                  /* The last two planes are control values.
+                   * Everything else is either an index or a color.
+                   * For HAM 5/6 colors, we use the 4 bits as both
+                   * upper and lower bit modifiers. */
+                  if (nPlanes == 5 || nPlanes == 6)
+                    {
+                      if (k < 4)
+                        {
+                          gint update = 1 << k;
+
+                          index += update;
+                          color += update + (update << 4);
+                        }
+                      else
+                        {
+                          count += 1 << (k - 4);
+                        }
+                    }
+                }
+            }
+
+          if (nPlanes == 5 || nPlanes == 6)
+            {
+              if (count == 0)
+                {
+                  prior_rgb[0] = gimp_cmap[index * 3];
+                  prior_rgb[1] = gimp_cmap[index * 3 + 1];
+                  prior_rgb[2] = gimp_cmap[index * 3 + 2];
+                }
+              else if (count == 1)
+                {
+                  prior_rgb[2] = color;
+                }
+              else if (count == 2)
+                {
+                  prior_rgb[0] = color;
+                }
+              else if (count == 3)
+                {
+                  prior_rgb[1] = color;
+                }
+            }
+
+          pixel_row[current_index * 3] = prior_rgb[0];
+          pixel_row[current_index * 3 + 1] = prior_rgb[1];
+          pixel_row[current_index * 3 + 2] = prior_rgb[2];
+
+          current_index++;
+        }
+    }
 }
 
 static void
