@@ -2719,6 +2719,7 @@ save_ps_preview (GOutputStream  *output,
 
     case GIMP_INDEXED_IMAGE:
       cmap = gimp_image_get_colormap (gimp_item_get_image (GIMP_ITEM (drawable)),
+                                      NULL,
                                       &ncols);
       format = gimp_drawable_get_format (drawable);
       break;
