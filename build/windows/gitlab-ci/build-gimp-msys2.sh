@@ -108,6 +108,14 @@ meson .. -Dprefix="${GIMP_PREFIX}"           \
          -Dbuild-id=org.gimp.GIMP_official   \
          -Dgi-docgen=disabled                \
          ${GIMP_OPTIONS}
+echo "DLLs:"
+ls $PATH/bin/*dll
+echo "sys DLLs:"
+ls /c/msys64/mingw32/bin/*dll
+echo "sys PKG-CONFIG:"
+ls /c/msys64/mingw32/lib/pkg-config/*pc
+echo "GOBJECT INTRO:"
+pkg-config --libs gobject-introspection-1.0
 ninja
 ninja install
 cd ..
