@@ -54,6 +54,9 @@ if [ $? -ne 0 ]; then
   exit 1;
 fi
 
+# TESTING
+mv $CROSSROAD_PREFIX/bin/libgirepository-1.0-1.dll $CROSSROAD_PREFIX/bin/libgirepository-1.0.dll
+
 if [ "x$CROSSROAD_PLATFORM" = "xw64" ]; then
     # Generate the loaders.cache file for GUI image support.
     # Note: this is mostly for distribution so I initially wanted to
