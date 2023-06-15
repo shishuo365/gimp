@@ -91,8 +91,8 @@ static void      script_fu_output_to_console     (gboolean          is_error,
  */
 
 GimpValueArray *
-script_fu_console_run (GimpProcedure        *procedure,
-                       const GimpValueArray *args)
+script_fu_console_run (GimpProcedure       *procedure,
+                       GimpProcedureConfig *config)
 {
   ConsoleInterface  console = { 0, };
   GtkWidget        *vbox;

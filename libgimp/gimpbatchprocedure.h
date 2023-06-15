@@ -46,7 +46,7 @@ G_BEGIN_DECLS
 typedef GimpValueArray * (* GimpBatchFunc) (GimpProcedure        *procedure,
                                             GimpRunMode           run_mode,
                                             const gchar          *command,
-                                            const GimpValueArray *args,
+                                            GimpProcedureConfig  *config,
                                             gpointer              run_data);
 
 
