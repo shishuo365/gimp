@@ -62,11 +62,18 @@ gimp_console_app_new (Gimp        *gimp,
                       const char  *batch_interpreter,
                       const char **batch_commands)
 {
-  GimpConsoleApp *app;
+  GimpConsoleApp    *app;
+  GApplicationFlags  flag;
+
+#if GLIB_CHECK_VERSION(2,74,0)
+  flag = G_APPLICATION_DEFAULT_FLAGS;
+#else
+  flag = G_APPLICATION_FLAGS_NONE;
+#endif
 
   app = g_object_new (GIMP_TYPE_CONSOLE_APP,
                       "application-id",    GIMP_APPLICATION_ID,
-                      "flags",             G_APPLICATION_DEFAULT_FLAGS | G_APPLICATION_NON_UNIQUE,
+                      "flags",             flag | G_APPLICATION_NON_UNIQUE,
                       "gimp",              gimp,
                       "filenames",         filenames,
                       "as-new",            as_new,
