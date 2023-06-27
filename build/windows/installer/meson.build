@@ -30,6 +30,5 @@ installsplash = custom_target('installsplash-devel.bmp',
              '--batch-interpreter', 'python-fu-eval',
              '-b', '-', '--quit'],
   feed: true,
-  build_by_default: true,
   env: env
 )
