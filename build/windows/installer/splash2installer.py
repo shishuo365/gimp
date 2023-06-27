@@ -1,6 +1,12 @@
+import os
+
+print("HELLO")
 image  = Gimp.list_images()[0]
 config = Gimp.get_pdb().lookup_procedure("file-bmp-save").create_config()
 
+print("GI_TYPELIB_PATH: " + str(os.environ['GI_TYPELIB_PATH']) + "\n")
+print("LD_LIBRARY_PATH: " + str(os.environ['LD_LIBRARY_PATH']))
+#sys.exit(1)
 def export_scaled_img(image, target_width, target_height, export_path):
   img        = image.duplicate()
   w          = img.get_width()
@@ -36,3 +42,5 @@ def export_scaled_img(image, target_width, target_height, export_path):
 export_scaled_img(image, 994, 692, 'build/windows/installer/installsplash-devel.bmp')
 export_scaled_img(image, 497, 360, 'build/windows/installer/installsplash_small-devel.bmp')
 export_scaled_img(image, 1160, 803, 'build/windows/installer/installsplash_big-devel.bmp')
+
+print("BYE")

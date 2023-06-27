@@ -113,7 +113,7 @@ ninja install
 # This should work without GIMP to be installed, but so far, it doesn't work too
 # much. So I removed "build_by_default: true" on this target and run it manually
 # after `ninja install`.
-ninja build/windows/installer/installsplash-devel.bmp
+#ninja build/windows/installer/installsplash-devel.bmp
 cd ..
 
 #ccache --show-stats
