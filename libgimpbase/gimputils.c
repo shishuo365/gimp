@@ -27,6 +27,7 @@
 
 #ifdef PLATFORM_OSX
 #include <AppKit/AppKit.h>
+#include <libunwind.h>
 #endif
 
 #ifdef HAVE_EXECINFO_H
@@ -1220,6 +1221,35 @@ gimp_stack_trace_print (const gchar   *prog_name,
 {
   gboolean stack_printed = FALSE;
 
+#ifdef PLATFORM_OSX
+  /* On macOS, we can't use gdb or lldb to attach to a process, so we
+   * have to use the stacktrace() API.
+   */
+
+  unw_cursor_t cursor;
+  unw_context_t context;
+
+  unw_getcontext (&context);
+  unw_init_local (&cursor, &context);
+
+  if (stream) {
+    g_fprintf (stream, "Stack trace:\n");
+    while (unw_step (&cursor) > 0) {
+      unw_word_t offset, pc;
+      char fname[64];
+
+      unw_get_reg (&cursor, UNW_REG_IP, &pc);
+      fname[0] = '\0';
+      unw_get_proc_name (&cursor, fname, sizeof(fname), &offset);
+
+      g_fprintf (stream, "%p : (%s+0x%lx)\n", (void *)pc, fname, (unsigned long)offset);
+    }
+  }
+
+  /* Stack printing conflicts with the OS stack printing */
+  return stack_printed;
+
+#else
   /* This works only on UNIX systems. */
 #ifndef G_OS_WIN32
   GString *gtrace = NULL;
@@ -1469,6 +1499,7 @@ gimp_stack_trace_print (const gchar   *prog_name,
 #endif /* G_OS_WIN32 */
 
   return stack_printed;
+#endif /* PLATFORM_OSX */
 }
 
 /**
