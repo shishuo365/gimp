@@ -119,7 +119,34 @@ struct _EXRLoader
       }
     else
       {
-        throw;
+        int          channel_count = 0;
+        const char * channel_name  = NULL;
+
+        for (ChannelList::ConstIterator i = channels_.begin();
+             i != channels_.end(); ++i)
+          {
+            channel_count++;
+
+            pt_ = i.channel().type;
+            channel_name = i.name();
+          }
+
+       /* Assume single channel images are grayscale,
+        * no matter what the channel name is. */
+        if (channel_count == 1)
+          {
+            format_string_ = "Y";
+            image_type_ = IMAGE_TYPE_GRAY;
+
+            /* TODO: Pass this information back so it can be displayed
+             * in the UI. */
+            printf ("OpenEXR Warning: Single channel image with unknown "
+                    "channel %s, loading as grayscale", channel_name);
+          }
+        else
+          {
+            throw;
+          }
       }
 
     if (channels_.findChannel("A"))
