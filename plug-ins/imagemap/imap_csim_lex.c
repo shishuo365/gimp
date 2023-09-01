@@ -382,8 +382,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 32
-#define YY_END_OF_BUFFER 33
+#define YY_NUM_RULES 35
+#define YY_END_OF_BUFFER 36
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -1095,7 +1095,7 @@ YY_RULE_SETUP
 				}
 	YY_BREAK
 case 33:
-/* rule 30 can match eol */
+/* rule 33 can match eol */
 YY_RULE_SETUP
 #line 138 "imap_csim.l"
 ; /* Eat white space */
