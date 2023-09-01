@@ -105,7 +105,13 @@ ONFOCUS				return ONFOCUS;
 
 ONBLUR				return ONBLUR;
 
-ALT				return ALT;
+ONCLICK				return ONCLICK;
+
+ACCESSKEY			return ACCESSKEY;
+
+TABINDEX			return TABINDEX;
+
+ALT				    return ALT;
 
 HREF				return HREF;
 
