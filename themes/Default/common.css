@@ -236,6 +236,10 @@ scrolledwindow viewport grid, scrolledwindow viewport box {
    border: 0px solid @bg-color;
 }
 
+iconview:hover {
+  background-color: @stronger-border-color;
+}
+
 notebook header {
   background-color: @bg-color;
 }
