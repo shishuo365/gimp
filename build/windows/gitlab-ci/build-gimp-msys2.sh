@@ -7,10 +7,14 @@ if [[ "$MSYSTEM" == "MINGW32" ]]; then
     export MSYS2_ARCH="i686"
     export MSYS2_PREFIX="/c/msys64/mingw32"
     export GIMP_OPTIONS="-Dvala=disabled"
-else
+elif [[ "$MSYSTEM" == "MINGW64" ]]; then
     export ARTIFACTS_SUFFIX="-w64"
     export MSYS2_ARCH="x86_64"
     export MSYS2_PREFIX="/c/msys64/mingw64/"
+else # [[ "$MSYSTEM" == "MINGW64" ]];
+    export ARTIFACTS_SUFFIX="-arm64"
+    export MSYS2_ARCH="clang-aarch64"
+    export MSYS_PREFIX="/c/msys64/clangarm64/"
 fi
 
 export ACLOCAL_FLAGS="-I${MSYS2_PREFIX}/share/aclocal"
