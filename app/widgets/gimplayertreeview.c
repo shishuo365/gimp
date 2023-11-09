@@ -76,6 +76,7 @@ struct _GimpLayerTreeViewPrivate
   GtkWidget       *layer_mode_box;
   GtkAdjustment   *opacity_adjustment;
   GtkWidget       *anchor_button;
+  GtkWidget       *merge_down_button;
 
   GtkWidget       *link_button;
   GtkWidget       *link_popover;
@@ -405,6 +406,7 @@ gimp_layer_tree_view_constructed (GObject *object)
                                   GIMP_TYPE_LAYER);
   gtk_box_reorder_child (gimp_editor_get_button_box (GIMP_EDITOR (layer_view)),
                          button, 5);
+  gtk_widget_set_visible (layer_view->priv->anchor_button, FALSE);
 
   button = gimp_editor_add_action_button (GIMP_EDITOR (layer_view), "layers",
                                           "layers-merge-down-button",
@@ -416,6 +418,7 @@ gimp_layer_tree_view_constructed (GObject *object)
                                           GDK_CONTROL_MASK |
                                           GDK_SHIFT_MASK,
                                           NULL);
+  layer_view->priv->merge_down_button = button;
   gimp_container_view_enable_dnd (GIMP_CONTAINER_VIEW (layer_view),
                                   GTK_BUTTON (button),
                                   GIMP_TYPE_LAYER);
@@ -1219,6 +1222,10 @@ gimp_layer_tree_view_floating_selection_changed (GimpImage         *image,
 
       g_list_free (all_layers);
     }
+
+  gtk_widget_set_sensitive (layer_view->priv->link_button, ! floating_sel);
+  gtk_widget_set_visible (layer_view->priv->anchor_button, floating_sel);
+  gtk_widget_set_visible (layer_view->priv->merge_down_button, ! floating_sel);
 
   gimp_layer_tree_view_update_highlight (layer_view);
 }
