@@ -1,0 +1,43 @@
+pal1hufflsb.bmp
+pal1huffmsb.bmp
+pal1p1.bmp
+pal2.bmp,            EXPECTED_FAIL
+pal2color.bmp,       EXPECTED_FAIL
+pal4rlecut.bmp
+pal4rletrns.bmp
+pal8offs.bmp
+pal8os2-hs.bmp
+pal8os2-sz.bmp
+pal8os2sp.bmp
+pal8os2v2-16.bmp,    EXPECTED_FAIL
+pal8os2v2-40sz.bmp
+pal8os2v2-sz.bmp
+pal8os2v2.bmp
+pal8oversizepal.bmp, EXPECTED_FAIL
+pal8rlecut.bmp
+pal8rletrns.bmp
+rgb16-231.bmp
+rgb16-3103.bmp
+rgb16faketrns.bmp
+rgb24jpeg.bmp,       EXPECTED_FAIL
+rgb24largepal.bmp
+rgb24lprof.bmp
+rgb24png.bmp,        EXPECTED_FAIL
+rgb24prof.bmp
+rgb24prof2.bmp
+rgb24rle24.bmp,      EXPECTED_FAIL
+rgb32-111110.bmp
+rgb32-7187.bmp
+rgb32-xbgr.bmp
+rgb32fakealpha.bmp
+rgb32h52.bmp,        EXPECTED_FAIL
+rgba16-1924.bmp
+rgba16-4444.bmp
+rgba16-5551.bmp
+rgba32-1.bmp
+rgba32-1010102.bmp
+rgba32-2.bmp
+rgba32-61754.bmp
+rgba32-81284.bmp
+rgba32abf.bmp,      EXPECTED_FAIL
+rgba32h56.bmp

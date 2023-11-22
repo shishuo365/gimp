@@ -895,6 +895,51 @@ clang-format:
     expire_in: 1 week
   needs: []
 
+file-plug-in-tests:
+  rules:
+    # On commits and merge requests.
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    # On releases.
+    - if: '$CI_COMMIT_TAG != null'
+  variables:
+    CHERE_INVOKING: "yes"
+    GIMP_PREFIX: "gimp-prefix"
+    GIMP_TESTS_DATA_FOLDER: "$CI_PROJECT_DIR/_data/"
+    #FIXME replace 2.99 by version variable
+    GIMP_TESTS_CONFIG_FILE: "${GIMP_PREFIX}/lib/gimp/2.99/plug-ins/test-file-plug-ins/tests/batch-config.ini"
+    GIMP_TESTS_LOG_FILE: "$CI_PROJECT_DIR/_log/tests.log"
+    #FIXME replace 2.99 by version variable
+    PYTHONPATH: "${GIMP_PREFIX}/lib/gimp/2.99/plug-ins/test-file-plug-ins"
+    REGRESSION_STRING: "Total number of regressions: 0"
+  cache:
+    paths:
+    - _data
+  stage: analysis
+  dependencies:
+    # we need GIMP to run the tests
+    - gimp-meson-debian
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}"
+    when: always
+    expire_in: 2 days
+    paths:
+      - _log/
+  before_script:
+    - mkdir _data && cd _data
+    - git clone --depth=${GIT_DEPTH} https://github.com/ZaaLabs/ZaaIL-TestImages.git zaail
+  script:
+#    - mkdir _data && cd _data
+#    - ./build/windows/gitlab-ci/download-test-images.sh
+    - mkdir _log
+    #FIXME replace 2.99 by version variable
+    - cat ${GIMP_PREFIX}/lib/gimp/2.99/plug-ins/test-file-plug-ins/batch-import-tests.py | gimp-console-2.99 -idf --batch-interpreter python-fu-eval -b - --quit
+    - if [ $(grep -c ${REGRESSION_STRING} "${GIMP_TESTS_LOG_FILE}") -ne 1 ]; then
+        echo "There are file import regressions. Check the log at ${GIMP_TESTS_LOG_FILE}!";
+        exit 1;
+      fi
+  needs: ["gimp-meson-debian"]
+
 ## Ready-to-distribute ##
 
 win-installer-nightly:

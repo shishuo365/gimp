@@ -1,0 +1,15 @@
+4x4_1bit_bitmap.psd,           EXPECTED_OK
+4x4_8bit_cmyk.psd,             EXPECTED_OK
+4x4_8bit_duotone.psd,          EXPECTED_OK
+4x4_8bit_grayscale.psd,        EXPECTED_OK
+4x4_8bit_index_color.psd,      EXPECTED_OK
+4x4_8bit_lab.psd,              EXPECTED_OK
+4x4_8bit_rgb.psd,              EXPECTED_OK
+4x4_8bit_rgba.psd,             EXPECTED_OK
+4x4_16bit_cmyk.psd,            EXPECTED_OK
+4x4_16bit_grayscale.psd,       EXPECTED_OK
+4x4_16bit_lab.psd,             EXPECTED_TODO
+4x4_16bit_multichannel.psd,    EXPECTED_OK
+4x4_16bit_rgb.psd,             EXPECTED_OK
+4x4_32bit_grayscale.psd,       EXPECTED_OK
+4x4_32bit_rgb.psd,             EXPECTED_OK

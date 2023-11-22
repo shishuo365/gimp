@@ -1,0 +1,20 @@
+badbitcount.bmp,    EXPECTED_FAIL
+badbitssize.bmp
+baddens1.bmp
+baddens2.bmp
+badfilesize.bmp
+badheadersize.bmp,  EXPECTED_FAIL
+badpalettesize.bmp, EXPECTED_FAIL
+badplanes.bmp,      EXPECTED_FAIL
+badrle.bmp
+badrle4.bmp
+badrle4bis.bmp
+badrle4ter.bmp
+badrlebis.bmp
+badrleter.bmp
+badwidth.bmp,       EXPECTED_FAIL
+pal8badindex.bmp
+reallybig.bmp,      EXPECTED_FAIL
+rgb16-880.bmp
+rletopdown.bmp
+shortfile.bmp

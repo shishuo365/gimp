@@ -22,6 +22,7 @@ if not stable or not release
 endif
 
 subdir('python-console')
+subdir('tests')
 
 foreach plugin : plugins
   name = plugin.get('name')

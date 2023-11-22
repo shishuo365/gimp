@@ -1,0 +1,114 @@
+bkgd_after_idat.png
+chrm_after_idat.png
+chrm_after_plte.png
+chunk_crc.png, EXPECTED_FAIL
+chunk_length.png, EXPECTED_FAIL
+chunk_private_critical.png, EXPECTED_FAIL
+chunk_type.png, EXPECTED_FAIL
+gama_after_idat.png
+gama_after_plte.png
+gama_zero.png
+hist_after_idat.png
+hist_before_plte.png
+iccp_after_idat.png
+iccp_after_plte.png
+ihdr_16bit_palette.png, EXPECTED_FAIL
+ihdr_1bit_alpha.png, EXPECTED_FAIL
+ihdr_bit_depth.png, EXPECTED_FAIL
+ihdr_color_type.png, EXPECTED_FAIL
+ihdr_compression_method.png, EXPECTED_FAIL
+ihdr_filter_method.png, EXPECTED_FAIL
+ihdr_image_size.png, EXPECTED_FAIL
+ihdr_interlace_method.png, EXPECTED_FAIL
+itxt_compression_flag.png
+itxt_compression_method.png
+itxt_keyword_length.png
+itxt_keyword_length_2.png
+length_bkgd_gray.png
+length_bkgd_palette.png
+length_bkgd_rgb.png
+length_chrm.png
+length_gama.png
+length_gifg.png
+length_hist.png
+length_iend.png
+length_ihdr.png, EXPECTED_FAIL
+length_offs.png
+length_phys.png
+length_sbit.png
+length_sbit_2.png
+length_srgb.png
+length_ster.png
+length_time.png
+length_trns_gray.png
+length_trns_palette.png
+length_trns_rgb.png
+missing_idat.png, EXPECTED_FAIL
+missing_ihdr.png, EXPECTED_FAIL
+missing_plte.png, EXPECTED_FAIL
+missing_plte_2.png, EXPECTED_FAIL
+multiple_bkgd.png
+multiple_chrm.png
+multiple_gama.png
+multiple_hist.png
+multiple_iccp.png
+multiple_ihdr.png, EXPECTED_FAIL
+multiple_offs.png
+multiple_pcal.png
+multiple_phys.png
+multiple_plte.png, EXPECTED_FAIL
+multiple_sbit.png
+multiple_scal.png
+multiple_srgb.png
+multiple_ster.png
+multiple_time.png
+multiple_trns.png
+nonconsecutive_idat.png
+offs_after_idat.png
+offs_unit_specifier.png
+pcal_after_idat.png
+phys_after_idat.png
+phys_unit_specifier.png
+plte_after_idat.png, EXPECTED_FAIL
+plte_empty.png, EXPECTED_FAIL
+plte_in_grayscale.png
+plte_length_mod_three.png, EXPECTED_FAIL
+plte_too_many_entries.png
+plte_too_many_entries_2.png
+private_compression_method.png, EXPECTED_FAIL
+private_filter_method.png, EXPECTED_FAIL
+private_filter_type.png, EXPECTED_FAIL
+private_interlace_method.png, EXPECTED_FAIL
+sbit_after_idat.png
+sbit_after_plte.png
+sbit_sample_depth.png
+sbit_sample_depth_2.png
+scal_after_idat.png
+scal_floating_point.png
+scal_negative.png
+scal_unit_specifier.png
+scal_zero.png
+splt_after_idat.png
+splt_duplicate_name.png
+splt_length_mod_10.png
+splt_length_mod_6.png
+splt_sample_depth.png
+srgb_after_idat.png
+srgb_after_plte.png
+ster_after_idat.png
+ster_mode.png
+text_trailing_null.png
+time_value_range.png
+trns_after_idat.png
+trns_bad_color_type.png
+trns_too_many_entries.png
+truncate_idat_0.png, EXPECTED_FAIL
+truncate_idat_1.png, EXPECTED_FAIL
+truncate_zlib.png, EXPECTED_FAIL
+truncate_zlib_2.png, EXPECTED_FAIL
+unknown_filter_type.png, EXPECTED_FAIL
+x00n0g01.png, EXPECTED_FAIL
+xcrn0g04.png, EXPECTED_FAIL
+xlfn0g04.png, EXPECTED_FAIL
+ztxt_compression_method.png
+ztxt_data_format.png

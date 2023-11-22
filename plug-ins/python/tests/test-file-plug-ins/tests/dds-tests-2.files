@@ -1,0 +1,12 @@
+issue-05556-Clean 0x12B09936.dds
+issue-05960-out.dds
+issue-06034-sub_DXT5.dds
+issue-06034-sub_YCoCg_scaled.dds
+issue-06200-BC5_gimp.dds
+issue-06200-BC5_nvcompress.dds
+issue-06723-female_body.dds
+issue-07566-correct-indexed-256.dds
+issue-07724-Rexing_Carbon_V5.dds,      EXPECTED_TODO
+issue-09499-keyassignPC3_IAM.dds,      EXPECTED_TODO
+issue-10069-ZDI-CAN-22093.dds,         EXPECTED_FAIL 
+issue-10240-rgba10a2-29917-1.dds
