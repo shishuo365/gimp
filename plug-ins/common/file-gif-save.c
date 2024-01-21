@@ -699,17 +699,44 @@ sanity_check (GFile        *file,
     {
       g_set_error (error, 0, 0,
                    _("Unable to export '%s'.  "
-                   "The GIF file format does not support images that are "
-                   "more than %d pixels wide or tall."),
+                     "The GIF file format does not support images that are "
+                     "more than %d pixels wide or tall."),
                    gimp_file_get_utf8_name (file), G_MAXUSHORT);
 
       return GIMP_PDB_EXECUTION_ERROR;
     }
 
+  *image = gimp_image_duplicate (*image);
+
+  /* Convert image to 8 bit precision if necessary */
+  if (gimp_image_get_precision (*image) != GIMP_PRECISION_U8_NON_LINEAR)
+    {
+      gboolean converted = FALSE;
+
+      converted = gimp_image_convert_precision (*image,
+                                                GIMP_PRECISION_U8_NON_LINEAR);
+
+      if (converted)
+        {
+          g_message (_("The GIF format only supports 8 bit integer precision. "
+                       "It has been converted for export; there may be "
+                       "changes in the pixel values as a result."));
+        }
+      else
+        {
+          g_set_error (error, 0, 0,
+                       _("Unable to export '%s'.  "
+                         "Please convert your image to 8 bit integer "
+                         "precision, as the GIF file format does not "
+                         "support higher precisions."),
+                       gimp_file_get_utf8_name (file));
+
+          return GIMP_PDB_EXECUTION_ERROR;
+        }
+    }
+
   /*** Iterate through the layers to make sure they're all ***/
   /*** within the bounds of the image                      ***/
-
-  *image = gimp_image_duplicate (*image);
   layers = gimp_image_list_layers (*image);
 
   for (list = layers; list; list = g_list_next (list))
