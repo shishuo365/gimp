@@ -1,5 +1,5 @@
 #list of 32bit files to install on x64
-!GTK
+!DEPS
 etc\fonts\
 lib\gdk-pixbuf-2.0\2.10.0\loaders\*.dll
 lib\gdk-pixbuf-2.0\2.10.0\loaders.cache

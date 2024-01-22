@@ -38,7 +38,7 @@ Source: "{#SRC_DIR}\{#FileLine}"; DestDir: "{app}\32\{#OutputDir}"; Components: 
 		#elif Copy(FileLine,1,1)=="!"
 			#if Copy(FileLine,2)=="GIMP"
 				#expr SRC_DIR=GIMP_DIR32
-			#elif Copy(FileLine,2)=="GTK"
+			#elif Copy(FileLine,2)=="DEPS"
 				#expr SRC_DIR=DEPS_DIR32
 			#elif Copy(FileLine,2)=="end"
 				#define public Finished 1
