@@ -382,8 +382,8 @@ conf.set('G_DISABLE_DEPRECATED', glib.version().version_compare('>=2.57'))
 gobject           = dependency('gobject-2.0',        version: '>='+glib_minver)
 gmodule           = dependency('gmodule-no-export-2.0')
 
-gtk3_minver       = '3.24.0'
-gtk3              = dependency('gtk+-3.0',           version: '>='+gtk3_minver)
+gtk_minver       = '3.24.0'
+gtk3              = dependency('gtk+-3.0',           version: '>='+gtk_minver)
 harfbuzz_minver   = '1.0.5'
 harfbuzz          = dependency('harfbuzz',           version: '>='+harfbuzz_minver)
 json_glib         = dependency('json-glib-1.0',      version: '>=1.2.6')
@@ -1690,7 +1690,7 @@ install_conf.set('GEGL_REQUIRED_VERSION',         gegl_minver)
 install_conf.set('EXIV2_REQUIRED_VERSION',        exiv2_minver)
 install_conf.set('GEXIV2_REQUIRED_VERSION',       gexiv2_minver)
 install_conf.set('GLIB_REQUIRED_VERSION',         glib_minver)
-install_conf.set('GTK_REQUIRED_VERSION',          gtk3_minver)
+install_conf.set('GTK_REQUIRED_VERSION',          gtk_minver)
 install_conf.set('HARFBUZZ_REQUIRED_VERSION',     harfbuzz_minver)
 install_conf.set('LCMS_REQUIRED_VERSION',         lcms_minver)
 install_conf.set('LIBHEIF_REQUIRED_VERSION',      libheif_minver)
