@@ -1,0 +1,40 @@
+//set the version string
+
+#define public
+
+;GIMP version (changes at evey micro version)
+#if !Defined(GIMP_VERSION)
+  #error "GIMP_VERSION must be defined"
+#endif
+#define MAJOR=Copy(GIMP_VERSION,1,Pos(".",GIMP_VERSION)-1)
+#define MINOR=Copy(GIMP_VERSION,Pos(".",GIMP_VERSION)+1)
+#define MICRO=Copy(MINOR,Pos(".",MINOR)+1)
+#expr MINOR=Copy(MINOR,1,Pos(".",MINOR)-1)
+
+;GIMP app version (changes at evey minor version)
+#define GIMP_APP_VERSION=MAJOR + "." + MINOR
+
+;GIMP dir version (changes at every minor version, except when get stable)
+#if Int(MINOR) % 2 == 1
+ #define DEVEL="-dev"
+ #define GIMP_DIR_VERSION GIMP_APP_VERSION
+#else
+ #define DEVEL=""
+ #define GIMP_DIR_VERSION=MAJOR + ".0"
+#endif
+
+;GIMP api version (changes at every major version, even before getting stable)
+#if Int(MINOR) % 2 == 1
+ #define API_MAJOR=Copy(MAJOR,+1)
+ #define GIMP_API_VERSION=API_MAJOR + ".0"
+#else
+ #define GIMP_API_VERSION=MAJOR + ".0"
+#endif
+
+
+//used in the component list
+#if !Defined(DEPS_VERSION)
+  #error "DEPS_VERSION must be defined"
+#endif
+#define DEPS_MAJOR=Copy(DEPS_VERSION,1,Pos(".",DEPS_VERSION)-1)
+#define DEPS_DIR_VERSION=DEPS_MAJOR + ".0"
