@@ -416,7 +416,8 @@ gimp_text_finalize (GObject *object)
   g_clear_pointer (&text->text,     g_free);
   g_clear_pointer (&text->markup,   g_free);
   g_clear_pointer (&text->language, g_free);
-  g_clear_object (&text->font);
+  if (&text->font && GIMP_IS_FONT (&text->font))
+    g_clear_object (&text->font);
 
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
