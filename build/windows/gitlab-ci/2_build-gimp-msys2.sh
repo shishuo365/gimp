@@ -34,7 +34,7 @@ else
     GIMP_GITDIR=$(sed 's|build||g' <<< $GIMP_GITDIR)
     cd $GIMP_GITDIR
   fi
-  
+
   pacman --noconfirm -Suy
 fi
 
@@ -51,11 +51,14 @@ wget -O "${MSYS2_PREFIX}/include/qoi.h" https://raw.githubusercontent.com/phobos
 
 # Build GIMP
 export GIMP_PREFIX="`realpath ~/_install`${ARTIFACTS_SUFFIX}"
-export PATH="$GIMP_PREFIX/bin:$PATH"
-export PKG_CONFIG_PATH="${GIMP_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PKG_CONFIG_PATH="${GIMP_PREFIX}/share/pkgconfig:$PKG_CONFIG_PATH"
-export LD_LIBRARY_PATH="${GIMP_PREFIX}/lib:${LD_LIBRARY_PATH}"
-export XDG_DATA_DIRS="${GIMP_PREFIX}/share:${MSYSTEM_PREFIX}/share/"
+
+LIB_DIR=$(gcc -print-multi-os-directory | sed 's/\.\.\///g')
+gcc -print-multiarch | grep . && LIB_SUBDIR=$(echo $(gcc -print-multiarch)'/')
+export PATH="${GIMP_PREFIX}/bin:$PATH"
+export PKG_CONFIG_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}"
+export XDG_DATA_DIRS="${GIMP_PREFIX}/share:/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
+export GI_TYPELIB_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}girepository-1.0"
 
 if [ ! -d "_ccache" ]; then
   mkdir -p _ccache
@@ -136,7 +139,7 @@ if [[ "$BUILD_TYPE" == "CI_NATIVE" ]]; then
   make_cmd CI %cd%
 
   cd ..
-  
+
   #ccache --show-stats
 
   # XXX Moving back the prefix to be used as artifacts.
