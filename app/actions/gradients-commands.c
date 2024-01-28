@@ -31,6 +31,7 @@
 #include "widgets/gimpcontainereditor.h"
 #include "widgets/gimpcontainerview.h"
 #include "widgets/gimphelp-ids.h"
+#include "widgets/gimpwidgets-utils.h"
 
 #include "dialogs/dialogs.h"
 
@@ -41,6 +42,8 @@
 
 /*  local function prototypes  */
 
+static void   gradients_save_as_pov_ray_map      (GtkWidget    *dialog,
+                                                  gpointer     *data);
 static void   gradients_save_as_pov_ray_response (GtkWidget    *dialog,
                                                   gint          response_id,
                                                   GimpGradient *gradient);
@@ -85,9 +88,9 @@ gradients_save_as_pov_ray_cmd_callback (GimpAction *action,
 
       gtk_dialog_set_default_response (GTK_DIALOG (dialog), GTK_RESPONSE_OK);
       gimp_dialog_set_alternative_button_order (GTK_DIALOG (dialog),
-                                               GTK_RESPONSE_OK,
-                                               GTK_RESPONSE_CANCEL,
-                                               -1);
+                                                GTK_RESPONSE_OK,
+                                                GTK_RESPONSE_CANCEL,
+                                                -1);
 
       g_object_set_data (G_OBJECT (dialog), "gimp", context->gimp);
 
@@ -99,6 +102,11 @@ gradients_save_as_pov_ray_cmd_callback (GimpAction *action,
       gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (dialog),
                                                       TRUE);
 
+#ifdef G_OS_WIN32
+     g_signal_connect (dialog, "map",
+                       G_CALLBACK (gradients_save_as_pov_ray_map),
+                       context->gimp);
+#endif
       g_signal_connect (dialog, "response",
                         G_CALLBACK (gradients_save_as_pov_ray_response),
                         gradient);
@@ -123,6 +131,17 @@ gradients_save_as_pov_ray_cmd_callback (GimpAction *action,
 
 
 /*  private functions  */
+
+static void
+gradients_save_as_pov_ray_map (GtkWidget *dialog,
+                               gpointer  *data)
+{
+#ifdef G_OS_WIN32
+  Gimp *gimp = (Gimp *) data;
+
+  gimp_window_set_title_bar_theme (gimp, dialog, FALSE);
+#endif
+}
 
 static void
 gradients_save_as_pov_ray_response (GtkWidget    *dialog,

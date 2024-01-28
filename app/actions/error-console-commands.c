@@ -30,6 +30,7 @@
 #include "widgets/gimperrorconsole.h"
 #include "widgets/gimphelp-ids.h"
 #include "widgets/gimptextbuffer.h"
+#include "widgets/gimpwidgets-utils.h"
 
 #include "error-console-commands.h"
 
@@ -38,6 +39,8 @@
 
 /*  local function prototypes  */
 
+static void   error_console_map           (GtkWidget        *dialog,
+                                           gpointer         *data);
 static void   error_console_save_response (GtkWidget        *dialog,
                                            gint              response_id,
                                            GimpErrorConsole *console);
@@ -120,6 +123,11 @@ error_console_save_cmd_callback (GimpAction *action,
       gtk_file_chooser_set_do_overwrite_confirmation (GTK_FILE_CHOOSER (dialog),
                                                       TRUE);
 
+#ifdef G_OS_WIN32
+     g_signal_connect (dialog, "map",
+                       G_CALLBACK (error_console_map),
+                       console);
+#endif
       g_signal_connect (dialog, "response",
                         G_CALLBACK (error_console_save_response),
                         console);
@@ -169,6 +177,17 @@ error_console_highlight_info_cmd_callback (GimpAction *action,
 
 
 /*  private functions  */
+
+static void
+error_console_map (GtkWidget *dialog,
+                   gpointer  *data)
+{
+#ifdef G_OS_WIN32
+  GimpErrorConsole *console = (GimpErrorConsole *) data;
+
+  gimp_window_set_title_bar_theme (console->gimp, dialog, FALSE);
+#endif
+}
 
 static void
 error_console_save_response (GtkWidget        *dialog,
