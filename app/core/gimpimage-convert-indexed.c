@@ -18,7 +18,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
+/* 2024-02-18 - Switch error diffusion to linear RGB, color selection could
+ *  perhaps have remained as CIE Lab - but it was easier to do a global change.
+ *
  * 2005-09-04 - Switch 'positional' dither matrix to a 32x32 Bayer,
  *  which generates results that compress somewhat better (and may look
  *  worse or better depending on what you enjoy...).  [adam@gimp.org]
@@ -188,9 +190,9 @@
  * faces of the logical cube we've allocated for it, so re-scale
  * again in inverse proportion to get back to linear proportions.
  */
-#define R_SCALE 13              /*  scale R (L*) distances by this much  */
-#define G_SCALE 24              /*  scale G (a*) distances by this much  */
-#define B_SCALE 26              /*  and B (b*) by this much              */
+#define R_SCALE 10              /*  scale R (L*) distances by this much  */
+#define G_SCALE 10              /*  scale G (a*) distances by this much  */
+#define B_SCALE 10              /*  and B (b*) by this much              */
 
 
 typedef struct _Color Color;
@@ -333,17 +335,13 @@ rgb_to_unshifted_lin (const guchar  r,
 
   babl_process (rgb_to_lab_fish, rgb, lab, 1);
 
-  /* fprintf(stderr, " %d-%d-%d -> %0.3f,%0.3f,%0.3f ", r, g, b, sL, sa, sb);*/
-
-  or = RINT(lab[0] * LRAT);
-  og = RINT((lab[1] - LOWA) * ARAT);
-  ob = RINT((lab[2] - LOWB) * BRAT);
+  or = lab[0]*255.0f;
+  og = lab[1]*255.0f;
+  ob = lab[2]*255.0f;
 
   *hr = CLAMP(or, 0, 255);
   *hg = CLAMP(og, 0, 255);
   *hb = CLAMP(ob, 0, 255);
-
-  /*  fprintf(stderr, " %d:%d:%d ", *hr, *hg, *hb); */
 }
 
 
@@ -446,13 +444,15 @@ lin_to_rgb (const gdouble  hr,
   ig = ((gdouble)( hg)) * 255.0F / (gdouble) (HIST_G_ELEMS - 1);
   ib = ((gdouble)( hb)) * 255.0F / (gdouble) (HIST_B_ELEMS - 1);
 
+#if 0
   ir = ir / LRAT;
   ig = (ig / ARAT) + LOWA;
   ib = (ib / BRAT) + LOWB;
+#endif
 
-  lab[0] = ir;
-  lab[1] = ig;
-  lab[2] = ib;
+  lab[0] = ir/255.0;
+  lab[1] = ig/255.0;
+  lab[2] = ib/255.0;
 
   babl_process (lab_to_rgb_fish, lab, rgb, 1);
 
@@ -824,8 +824,8 @@ gimp_image_convert_indexed (GimpImage               *image,
   format = babl_format_with_space ("R'G'B' float", space);
 
   /*  Build histogram if necessary.  */
-  rgb_to_lab_fish = babl_fish (format, babl_format ("CIE Lab float"));
-  lab_to_rgb_fish = babl_fish (babl_format ("CIE Lab float"), format);
+  rgb_to_lab_fish = babl_fish (format, babl_format_with_space ("RGB float", space));
+  lab_to_rgb_fish = babl_fish (babl_format_with_space ("RGB float", space), format);
 
   /* don't dither if the input is grayscale and we are simply mapping
    * every color
@@ -4219,26 +4219,8 @@ median_cut_pass2_fs_dither_rgb (QuantizeObj *quantobj,
                 }
             }
 
-#if 0
-          /* hmm. */
-
-          r = range_limiter[src[red_pix] + error_limiter[*rpr]];
-          g = range_limiter[src[green_pix] + error_limiter[*gpr]];
-          b = range_limiter[src[blue_pix] + error_limiter[*bpr]];
-
-          re = r >> R_SHIFT;
-          ge = g >> G_SHIFT;
-          be = b >> B_SHIFT;
-
-          rgb_to_lin (r, g, b, &re, &ge, &be);
-#endif
           rgb_to_unshifted_lin (src[red_pix], src[green_pix], src[blue_pix],
                                 &re, &ge, &be);
-
-          /*
-            re = CLAMP(re, global_rmin, global_rmax);
-            ge = CLAMP(ge, global_gmin, global_gmax);
-            be = CLAMP(be, global_bmin, global_bmax);*/
 
           re = range_limiter[re + error_limiter[*rpr]];
           ge = range_limiter[ge + error_limiter[*gpr]];
@@ -4261,18 +4243,16 @@ median_cut_pass2_fs_dither_rgb (QuantizeObj *quantobj,
           index_used_count[index]++;
           dest[INDEXED] = index;
 
-          /*if (re > global_rmax)
+          if (re > global_rmax)
             re = (re + 3*global_rmax) / 4;
           else if (re < global_rmin)
-          re = (re + 3*global_rmin) / 4;*/
+            re = (re + 3*global_rmin) / 4;
 
-          /* We constrain chroma error extra-hard so that it
-             doesn't run away and steal the thunder from the
-             lightness error where all the detail usually is. */
           if (ge > global_gmax)
             ge = (ge + 3*global_gmax) / 4;
           else if (ge < global_gmin)
             ge = (ge + 3*global_gmin) / 4;
+
           if (be > global_bmax)
             be = (be + 3*global_bmax) / 4;
           else if (be < global_bmin)
@@ -4280,30 +4260,9 @@ median_cut_pass2_fs_dither_rgb (QuantizeObj *quantobj,
 
           color = &quantobj->clin[index];
 
-#if 0
-          if ((re > 0 && re < 255) /* HMM &&
-              ge >= 0 && ge <= 255 &&
-              be >= 0 && be <= 255*/)
-            {
-              ge = ge - color->green;
-              be = be - color->blue;
-              re = re - color->red;
-            }
-          else
-            {
-              /* color pretty much undefined now; nullify error. */
-              re = ge = be = 0;
-            }
-#endif
-
-          if (re <= 0 || re >= 255)
-            re = ge = be = 0;
-          else
-            {
-              re = re - color->red;
-              ge = ge - color->green;
-              be = be - color->blue;
-            }
+          re = re - color->red;
+          ge = ge - color->green;
+          be = be - color->blue;
 
           if (odd_row)
             {
