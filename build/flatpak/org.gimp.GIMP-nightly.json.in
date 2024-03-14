@@ -4,7 +4,18 @@
     "runtime": "org.gnome.Platform",
     "runtime-version": "master",
     "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.llvm17"
+    ],
     "command": "gimp-@GIMP_APP_VERSION@",
+    "build-options": {
+        "append-path": "/usr/lib/sdk/llvm17/bin",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm17/lib",
+        "env": {
+            "CC": "clang",
+            "CXX": "clang++"
+        }
+    },
     "separate-locales": false,
     "rename-desktop-file": "gimp.desktop",
     "rename-icon": "gimp",
@@ -226,6 +237,12 @@
         },
         {
             "name": "aalib",
+            "build-options": {
+                "env": {
+                    "CC": "gcc",
+                    "CXX": "gcc"
+                }
+            },
             "config-opts": [
                 "--disable-static",
                 "--with-slang-driver=no"
@@ -419,6 +436,12 @@
         {
             "//": "Shamelessly taken from org.octave.Octave manifest!",
             "name": "SuiteSparse",
+            "build-options": {
+                "env": {
+                    "CC": "gcc",
+                    "CXX": "gcc"
+                }
+            },
             "no-autogen": true,
             "make-args": [
                 "BLAS=-lopenblas",
@@ -456,6 +479,12 @@
             "modules": [
                 {
                     "name": "openblas",
+                    "build-options": {
+                        "env": {
+                            "CC": "gcc",
+                            "CXX": "gcc"
+                        }
+                    },
                     "no-autogen": true,
                     "make-args": [
                         "DYNAMIC_ARCH=1",
