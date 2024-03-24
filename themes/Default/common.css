@@ -611,7 +611,7 @@ switch image {
  * maybe the default theme should not try and override this?
  */
 headerbar {
-  min-height: 0px;
+  min-height: 34px;
   background-color: @bg-color;
   background-image: none;
   border-color: @edge-border-color;
