@@ -237,30 +237,26 @@ gimp_critical_dialog_constructed (GObject *object)
                               " \xe2\x80\xa2 %s\n"
                               " \xe2\x80\xa2 %s",
                               _("To help us improve GIMP, you can report the bug with "
-                                "these simple steps:"),
-                              _("Copy the bug information to the clipboard by clicking: "),
-                              BUTTON1_TEXT,
-                              _("Open our bug tracker in the browser by clicking: "),
-                              BUTTON2_TEXT,
-                              _("Create a login if you don't have one yet."),
-                              _("Paste the clipboard text in a new bug report."),
-                              _("Add relevant information in English in the bug report "
-                                "explaining what you were doing when this error occurred."),
+                                "these steps:"),
+                              _("Copy the stacktrace data below by clicking: "),
+                                BUTTON1_TEXT,
+                              _("Create an account in our bug tracker by clicking: "),
+                                BUTTON2_TEXT,
+                              _("Fill ALL the info requested by the bug template in English."),
+                              _("After filling, paste the data into the appropriate place."),
+                               ("\n"),
                               _("This error may have left GIMP in an inconsistent state. "
                                 "It is advised to save your work and restart GIMP."));
       gtk_label_set_text (GTK_LABEL (dialog->center_label), text);
       g_free (text);
 
-      text = _("You can also close the dialog directly but "
-               "reporting bugs is the best way to make your "
-               "software awesome.");
       gtk_label_set_text (GTK_LABEL (dialog->bottom_label), text);
     }
 
   buffer = gtk_text_buffer_new (NULL);
   version = gimp_version (TRUE, FALSE);
   text = g_strdup_printf ("<!-- %s -->\n\n\n```\n%s\n```",
-                          _("Copy-paste this whole debug data to report to developers"),
+                          _("This stacktrace does NOT contain any personal data."),
                           version);
   gtk_text_buffer_set_text (buffer, text, -1);
   g_free (version);
@@ -593,15 +589,13 @@ gimp_critical_dialog_add (GtkWidget   *dialog,
                               " \xe2\x80\xa2 %s\n"
                               " \xe2\x80\xa2 %s",
                               _("To help us improve GIMP, you can report the bug with "
-                                "these simple steps:"),
-                              _("Copy the bug information to the clipboard by clicking: "),
-                              BUTTON1_TEXT,
-                              _("Open our bug tracker in the browser by clicking: "),
-                              BUTTON2_TEXT,
-                              _("Create a login if you don't have one yet."),
-                              _("Paste the clipboard text in a new bug report."),
-                              _("Add relevant information in English in the bug report "
-                                "explaining what you were doing when this error occurred."));
+                                "these steps:"),
+                              _("Copy the stacktrace below by clicking: "),
+                                BUTTON1_TEXT,
+                              _("Create an account in our bug tracker by clicking: "),
+                                BUTTON2_TEXT,
+                              _("Fill ALL the info requested by the bug template in English."),
+                              _("After filling, paste the data into the appropriate place."));
       gtk_label_set_text (GTK_LABEL (critical->center_label), text);
       g_free (text);
     }
