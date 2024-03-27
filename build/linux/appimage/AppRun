@@ -1,0 +1,82 @@
+#!/bin/sh
+
+# Based on:
+# https://appimage-builder.readthedocs.io/en/latest/examples/gimp_path_mapping.html
+# https://github.com/aferrero2707/gimp-appimage
+# https://github.com/ivan-hc/GIMP-appimage
+# https://github.com/sudo-give-me-coffee/PhotoMP/
+
+set -e
+
+LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
+if [ -e "$LD_LINUX" ] ; then
+  export OPT_LD="exec "" --inhibit-cache"
+fi
+
+# PATHS MAPPING
+HERE="$(dirname "$(readlink -f "${0}")")"
+
+## General paths
+export PATH="${HERE}"/OPT_PREFIX_WILDbin/:"${PATH}"
+export LD_LIBRARY_PATH="${HERE}"/OPT_PREFIX_WILDlib/:"${HERE}"/OPT_PREFIX_WILDlib/x86_64-linux-gnu/:"${HERE}"/OPT_PREFIX_WILDlib64/:"${LD_LIBRARY_PATH}"
+export XDG_DATA_DIRS="${HERE}"/OPT_PREFIX_WILDshare/:"${XDG_DATA_DIRS}"
+export GI_TYPELIB_PATH="${HERE}"/GI_TYPELIB_PATH_WILD:"${GI_TYPELIB_PATH}"
+
+## GIMP-specific paths
+export BABL_PATH="${HERE}"/BABL_PATH_WILD
+export GEGL_PATH="${HERE}"/GEGL_PATH_WILD
+export GIMP3_SYSCONFDIR="${HERE}"/GIMP3_SYSCONFDIR_WILD
+export GIMP3_PLUGINDIR="${HERE}"/GIMP3_PLUGINDIR_WILD
+export GIMP3_DATADIR="${HERE}"/GIMP3_DATADIR_WILD
+export GIMP3_LOCALEDIR="${HERE}"/OPT_PREFIX_WILDshare/locale
+export GIMP3_DIRECTORY="$HOME/.config/GIMP-AppImage/GIMP_APP_VERSION"
+if [ ! -d "$GIMP3_DIRECTORY" ]; then
+  # https://gitlab.gnome.org/GNOME/gimp/-/merge_requests/1440#note_2069674
+  $OPT_LD mkdir -p "$GIMP3_DIRECTORY"/gradients
+fi
+
+## Other paths
+export GTK_USE_PORTAL=1
+export PYTHONPATH="${HERE}"/PYTHONPATH_WILD
+
+
+# GET MAIN_BIN
+export PREFIX="${HERE}"/OPT_PREFIX_WILD
+cd "$HERE"/OPT_PREFIX_WILD
+
+## Method 1: Try to find main binary with the same name as the AppImage
+## or the symlink through which it was invoked, without any suffix
+if [ -z "$ARGV0" ] ; then
+  ### AppRun is being executed outside of an AppImage
+  ARGV0="$0"
+  echo "Executing gimp-GIMP_APP_VERSION outside AppImage"
+fi
+BINARY_NAME=$(basename "$ARGV0")
+if [ "$BINARY_NAME" = "AppRun" ] ; then
+  unset BINARY_NAME
+fi
+BINARY_NAME="${BINARY_NAME%.*}" # remove everything after the last "."
+MAIN_BIN=$(find "$HERE/OPT_PREFIX_WILDbin" -name "$BINARY_NAME" | head -n 1)
+
+## Method 2: Try to find the main binary based on the Exec= line in the .desktop
+if [ -z "$MAIN_BIN" ] ; then
+  MAIN=$(grep -r "^Exec=.*" "$HERE"/*.desktop | head -n 1 | cut -d "=" -f 2 | cut -d " " -f 1)
+  MAIN_BIN=$(find "$HERE/OPT_PREFIX_WILDbin" -name "$MAIN" | head -n 1)
+  echo "Executing gimp-GIMP_APP_VERSION INSIDE AppImage"
+fi
+
+
+# RUN MAIN_BIN
+
+## This allows the bundle to run even on older systems than the one it was built on
+if [ -e "$LD_LINUX" ] ; then
+  echo "Compatibility mode: ENABLED"
+  case $line in
+    "ld-linux"*) exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@" ;;
+    *) exec "${LD_LINUX}" "${MAIN_BIN}" "$@" ;;
+  esac
+## Or run without care about older systems
+else
+  echo "Compatibility mode: disabled"
+  exec "${MAIN_BIN}" "$@"
+fi
