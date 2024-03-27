@@ -287,6 +287,12 @@ if platform_windows and cc.get_id() == 'gcc'
   compiler_args += msvc_compat_args
 endif
 
+# Generate .pdb debug symbols (for the MS Store version)
+if platform_windows
+  compiler_args += '-gcodeview'
+  linker_args += '-Wl,--pdb='
+endif
+
 
 conf.set('HAVE__NL_MEASUREMENT_MEASUREMENT',
   cc.compiles('''
