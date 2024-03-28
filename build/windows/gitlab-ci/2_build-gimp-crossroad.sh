@@ -9,10 +9,28 @@ else # [[ "x$CROSSROAD_PLATFORM" = "xw32" ]];
 fi
 
 
-# The required packages for GIMP are taken from the previous job
+# Prepare gimp-console from gimp-debian-x64 project.
+GIMP_APP_VERSION=$(grep GIMP_APP_VERSION ${BUILD_DIR}/config.h | head -1 | sed 's/^.*"\([^"]*\)"$/\1/')
+mkdir bin
+echo "#!/bin/sh" > bin/gimp-console-$GIMP_APP_VERSION
+echo export LD_LIBRARY_PATH="${GIMP_PREFIX}/lib:${LD_LIBRARY_PATH}" >> bin/gimp-console-$GIMP_APP_VERSION
+echo export LD_LIBRARY_PATH="${GIMP_PREFIX}/lib/`gcc -print-multiarch`:\$LD_LIBRARY_PATH" >> bin/gimp-console-$GIMP_APP_VERSION
+echo export GI_TYPELIB_PATH="${GIMP_PREFIX}/lib/`gcc -print-multiarch`/girepository-1.0/:${GI_TYPELIB_PATH}" >> bin/gimp-console-$GIMP_APP_VERSION
+echo "${GIMP_PREFIX}/bin/gimp-console-$GIMP_APP_VERSION \"\$@\"" >> bin/gimp-console-$GIMP_APP_VERSION
+chmod u+x bin/gimp-console-$GIMP_APP_VERSION
+export PATH="`pwd`/bin:$PATH"
+
+# For crossroad
+export PATH="`pwd`/.local/bin:$PATH"
+
+
+# There is no installation of deps in this job
+# The required packages for GIMP are taken from the previous job (see "Copy built...")
 
 
 # Build GIMP
+git submodule update --init
+
 mkdir _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
 crossroad meson setup .. -Dgi-docgen=disabled                 \
                          -Djavascript=disabled -Dlua=disabled \
@@ -20,7 +38,6 @@ crossroad meson setup .. -Dgi-docgen=disabled                 \
                          $MESON_OPTIONS
 (ninja && ninja install) || exit 1
 cd ..
-
 
 ## XXX Functional fix to the problem of non-configured interpreters
 ## XXX Also, functional generator of the pixbuf 'loaders.cache' for GUI image support
@@ -45,9 +62,10 @@ echo "Please run the gimp.cmd file to know the actual plug-in support." > ${CROS
 # Copy built GIMP, babl and GEGL and pre-built packages to GIMP_PREFIX
 cp -fr $CROSSROAD_PREFIX/ _install${ARTIFACTS_SUFFIX}/
 
-if [[ "x$CROSSROAD_PLATFORM" = "xw32" ]]; then
-  # We fail to install wine32 in x86 dep job and Gitlab "needs" field
+
+# We fail to install wine32 in x86 dep job and Gitlab "needs" field
   # requires jobs to be from a prior stage, so we take from the x64 dep job
+if [[ "x$CROSSROAD_PLATFORM" = "xw32" ]]; then
   export CROSSROAD_PREFIX=".local/share/crossroad/roads/w64/gimp"
 
   cp ${CROSSROAD_PREFIX}/lib/gio/modules/giomodule.cache _install${ARTIFACTS_SUFFIX}/lib/gio/modules
