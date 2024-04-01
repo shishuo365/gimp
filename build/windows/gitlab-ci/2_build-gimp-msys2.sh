@@ -37,6 +37,7 @@ fi
 
 
 # Install the required (pre-built) packages for GIMP
+# We take code from deps script to better maintenance
 GIMP_DIR=""
 DEPS_CODE=$(cat build/windows/gitlab-ci/1_build-deps-msys2.sh)
 DEPS_CODE=$(sed -n '/# Install the/,/# End of install/p' <<< $DEPS_CODE)
@@ -49,11 +50,11 @@ wget -O "${MSYS2_PREFIX}/include/qoi.h" https://raw.githubusercontent.com/phobos
 
 # Build GIMP
 export GIMP_PREFIX="`realpath ~/_install`${ARTIFACTS_SUFFIX}"
-export PATH="$GIMP_PREFIX/bin:$PATH"
-export PKG_CONFIG_PATH="${GIMP_PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PKG_CONFIG_PATH="${GIMP_PREFIX}/share/pkgconfig:$PKG_CONFIG_PATH"
-export LD_LIBRARY_PATH="${GIMP_PREFIX}/lib:${LD_LIBRARY_PATH}"
-export XDG_DATA_DIRS="${GIMP_PREFIX}/share:${MSYSTEM_PREFIX}/share/"
+# Universal variables
+# We take code from deps script to better maintenance
+VARS_CODE=$(cat build/windows/gitlab-ci/1_build-deps-msys2.sh)
+VARS_CODE=$(sed -n '/# Universal variables/,/# End of universal/p' <<< $VARS_CODE)
+echo "$VARS_CODE" | bash
 
 if [ ! -d "_ccache" ]; then
   mkdir -p _ccache
