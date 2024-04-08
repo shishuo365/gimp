@@ -27,7 +27,7 @@ foreach test_name : tests
 
   py_test  = meson.current_source_dir() / basename + '.py'
   test(test_name, run_python_test,
-       args: [ gimp_exe, py_test ],
+       args: [ gimp_exe.full_path(), py_test ],
        env: gimp_run_env,
        suite: ['libgimp', 'python3'],
        timeout: 60)
@@ -56,7 +56,7 @@ foreach test_name : tests
                 install: false)
 
   test(test_name, run_c_test,
-       args: [ gimp_exe, meson.current_source_dir() / c_test_name, basename ],
+       args: [ gimp_exe.full_path(), meson.current_source_dir() / c_test_name, basename ],
        env: gimp_run_env,
        suite: ['libgimp', 'C'],
        timeout: 60)

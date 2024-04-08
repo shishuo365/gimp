@@ -1846,9 +1846,9 @@ gimp_run_env=environment()
 
 if meson.can_run_host_binaries()
   if enable_console_bin
-    gimp_exe=gimpconsole_exe
+    gimp_run_env.set('GIMP_SELF_IN_BUILD', gimpconsole_exe.full_path())
   else
-    gimp_exe=gimpmain_exe
+    gimp_run_env.set('GIMP_SELF_IN_BUILD', gimpmain_exe.full_path())
   endif
 
   menu_paths=meson.global_build_root() / 'menus:' + meson.global_source_root() / 'menus'
@@ -1884,25 +1884,22 @@ if meson.can_run_host_binaries()
     gimp_run_env.prepend('PATH', meson.global_build_root() / 'libgimpthumb')
     gimp_run_env.prepend('PATH', meson.global_build_root() / 'libgimpwidgets')
   elif platform_osx
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimp')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpbase')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpcolor')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpconfig')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpmath')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpmodule')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpthumb')
-    gimp_run_env.prepend('DYLD_LIBRARY_PATH', meson.global_build_root() / 'libgimpwidgets')
+    gimp_run_env.set('GIMP_TEMP_UPDATE_RPATH', '1')
   endif
 else
   # Cross-builds require an existing native GIMP installed, unless we
   # can run target binaries.
-  gimp_exe = find_program([gimpconsole_exe_name, gimpmain_exe_name],
-                          native: true, required: false)
+  native_gimp_exe = find_program([gimpconsole_exe_name, gimpmain_exe_name],
+                                 native: true, required: false)
 
-  if not gimp_exe.found()
+  if not native_gimp_exe.found()
     error('When cross-compiling, the build requires either an exe_wrapper or a native GIMP installed (@0@ or @1@).'.format(gimpconsole_exe_name, gimpmain_exe_name))
   endif
+
+  gimp_run_env.set('GIMP_SELF_IN_BUILD', native_gimp_exe.full_path())
 endif
+
+gimp_exe = find_program('tools'/'in-build-gimp.sh')
 
 # Use a temporary config directory in the top build root for 2 reasons: first
 # because we don't want to pollute any existing user config folder; second
