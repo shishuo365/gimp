@@ -175,6 +175,7 @@ deps-debian-x64:
   stage: dependencies
   image: $CI_REGISTRY_IMAGE:build-debian-latest
   cache:
+    key: $CI_JOB_NAME
     paths:
     - apt-cache
   artifacts:
@@ -226,6 +227,7 @@ deps-debian-x64:
   dependencies:
     - deps-debian-x64
   cache:
+    key: $CI_JOB_NAME
     paths:
     - apt-cache
   artifacts:
@@ -394,32 +396,48 @@ packaging-flatpak-x64:
 
 ## WINDOWS 64-bit CI (cross-build crossroad) ##
 
-deps-win-x64-cross:
-  rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
-  stage: dependencies
+.win-cross:
   image: $CI_REGISTRY_IMAGE:build-debian-latest
   variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
+    BUILD_TYPE: "CI_CROSS"
     XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
+    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
     # Needed because by default, Debian has now changed
     # "sysconfig.get_default_scheme()" from "posix_prefix" to "posix_local" which
     # adds a local/ folder to the install prefix of setup.py. This environment
     # variable overrides this behavior.
     DEB_PYTHON_INSTALL_LAYOUT: "deb"
-    APT_CACHE: "${CI_PROJECT_DIR}/apt-cache"
   cache:
+    key: $CI_JOB_NAME
     paths:
     - .cache/crossroad/
-    - apt-cache
+    - apt-cache/
+  before_script:
+  - mkdir -p "$APT_CACHE"
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    when: always
+
+.win-x64-cross:
+  extends: .win-cross
+  rules:
+    # On commits except tags.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+    # On merge requests.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    CROSS_PLATFORM: "w64"
+
+deps-win-x64-cross:
+  extends: '.win-x64-cross'
+  # GitLab don't support extending 'rules'
+  rules:
+    - !reference [.win-x64-cross, rules]
+  stage: dependencies
   before_script:
     - apt-get update
-    - mkdir -p "$APT_CACHE"
     - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
                          wine
                          wine64
@@ -431,8 +449,6 @@ deps-win-x64-cross:
   script:
     - crossroad w64 gimp --run="build/windows/gitlab-ci/1_build-deps-crossroad.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 2 hours
     paths:
       - .local/
@@ -441,25 +457,14 @@ deps-win-x64-cross:
   needs: ["image-debian-x64"]
 
 gimp-win-x64-cross:
+  extends: .win-x64-cross
+  # GitLab don't support extending 'rules'
   rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+    - !reference [.win-x64-cross, rules]
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   dependencies:
     - deps-win-x64-cross
     - gimp-debian-x64
-  variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - git submodule update --init
     # So that we can use gimp-console from gimp-debian-x64 project.
@@ -479,38 +484,22 @@ gimp-win-x64-cross:
     - crossroad w64 gimp --run="build/windows/gitlab-ci/2_build-gimp-crossroad.sh"
   needs: ["deps-win-x64-cross", "gimp-debian-x64"]
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
       - _build-x64-cross/
       - _install-x64-cross/
 
 packaging-win-x64-nightly:
+  extends: .win-x64-cross
+  # GitLab don't support extending 'rules'
   rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+    - !reference [.win-x64-cross, rules]
   stage: packaging
   dependencies:
     - gimp-win-x64-cross
-  variables:
-    BUILD_TYPE: "CI_CROSS"
-    CROSSROAD_PLATFORM: "w64"
-  artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
-    expire_in: 2 days
-    expose_as: 'Windows zip'
-    paths:
-    - gimp-x64/
-    - done-dll.list
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends
+    - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
                          binutils
                          binutils-mingw-w64-x86-64
                          file
@@ -520,27 +509,32 @@ packaging-win-x64-nightly:
     - bash -x build/windows/gitlab-ci/3_package-gimp-uni_base.sh
     - cd gimp-x64
     - bash -x ../build/windows/gitlab-ci/3_package-gimp-uni_sym.sh
+  artifacts:
+    expire_in: 2 days
+    expose_as: 'Windows zip'
+    paths:
+    - gimp-x64/
+    - done-dll.list
   needs: ["gimp-win-x64-cross"]
 
 ## WINDOWS 32-bit CI (cross-build crossroad) ##
 
-deps-win-x86-cross:
+.win-x86-cross:
+  extends: .win-cross
   rules:
     # Custom builds only (web GUI, API or schedules).
     - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
-  stage: dependencies
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-    DEB_PYTHON_INSTALL_LAYOUT: "deb"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
+    CROSS_PLATFORM: "w32"
+
+deps-win-x86-cross:
+  extends: .win-x86-cross
+  # GitLab don't support extending 'rules'
+  rules:
+    - !reference [.win-x86-cross, rules]
+  stage: dependencies
   before_script:
     - apt-get update
-    - mkdir -p "$APT_CACHE"
     - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
                          wine
     - git clone --depth=${GIT_DEPTH} https://gitlab.freedesktop.org/crossroad/crossroad.git
@@ -551,8 +545,6 @@ deps-win-x86-cross:
   script:
     - crossroad w32 gimp --run="build/windows/gitlab-ci/1_build-deps-crossroad.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 2 hours
     paths:
       - .local/
@@ -561,22 +553,15 @@ deps-win-x86-cross:
   needs: ["image-debian-x64"]
 
 gimp-win-x86-cross:
+  extends: .win-x86-cross
+  # GitLab don't support extending 'rules'
   rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
+    - !reference [.win-x86-cross, rules]
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   dependencies:
     - deps-win-x86-cross
     - deps-win-x64-cross
     - gimp-debian-x64
-  variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - git submodule update --init
     # So that we can use gimp-console from gimp-debian-x64 project.
@@ -596,34 +581,22 @@ gimp-win-x86-cross:
     - crossroad w32 gimp --run="build/windows/gitlab-ci/2_build-gimp-crossroad.sh"
   needs: ["deps-win-x86-cross", "deps-win-x64-cross", "gimp-debian-x64"]
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
       - _build-x86-cross/
       - _install-x86-cross/
 
 packaging-win-x86-nightly:
+  extends: .win-x86-cross
+  # GitLab don't support extending 'rules'
   rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
+    - !reference [.win-x86-cross, rules]
   stage: packaging
   dependencies:
     - gimp-win-x86-cross
-  variables:
-    BUILD_TYPE: "CI_CROSS"
-    CROSSROAD_PLATFORM: "w32"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-  artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
-    expire_in: 2 days
-    paths:
-    - gimp-x86
-    - done-dll.list
   before_script:
     - apt-get update
-    - apt-get install -y --no-install-recommends
+    - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
                          binutils
                          binutils-mingw-w64-i686
                          file
@@ -633,6 +606,11 @@ packaging-win-x86-nightly:
     - bash -x build/windows/gitlab-ci/3_package-gimp-uni_base.sh
     - cd gimp-x86
     - bash -x ../build/windows/gitlab-ci/3_package-gimp-uni_sym.sh
+  artifacts:
+    expire_in: 2 days
+    paths:
+    - gimp-x86
+    - done-dll.list
   needs: ["gimp-win-x86-cross"]
 
 

@@ -8,11 +8,11 @@ if [[ "$MSYSTEM_CARCH" == "aarch64" ]]; then
   export ARTIFACTS_SUFFIX="-a64"
   export MSYS_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
   export GIMP_DISTRIB=`realpath ./gimp-a64`
-elif [[ "$CROSSROAD_PLATFORM" == "w64" ]] || [[ "$MSYSTEM_CARCH" == "x86_64" ]]; then
+elif [[ "$CROSS_PLATFORM" == "w64" ]] || [[ "$MSYSTEM_CARCH" == "x86_64" ]]; then
   export ARTIFACTS_SUFFIX="-x64"
   export MSYS_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
   export GIMP_DISTRIB=`realpath ./gimp-x64`
-else # [[ "$CROSSROAD_PLATFORM" == "w32" ]] || [[ "$MSYSTEM_CARCH" == "i686" ]];
+else # [[ "$CROSS_PLATFORM" == "w32" ]] || [[ "$MSYSTEM_CARCH" == "i686" ]];
   export ARTIFACTS_SUFFIX="-x86"
   export MSYS_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
   export GIMP_DISTRIB=`realpath ./gimp-x86`
