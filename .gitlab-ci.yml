@@ -81,6 +81,8 @@ image-debian-x64:
     - echo "appstream
             at-spi2-core
             build-essential
+            ccache
+            clang
             cpio
             desktop-file-utils
             ffmpeg
@@ -169,22 +171,17 @@ deps-debian-x64:
     - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
     - if: '$GIMP_CI_SOURCES != null'
     - if: '$GIMP_CI_FLATPAK != null'
-  variables:
-    CC: "clang"
-    CXX: "clang++"
   stage: dependencies
   image: $CI_REGISTRY_IMAGE:build-debian-latest
+  variables:
+    CC: "ccache clang"
+    CXX: "ccache clang++"
+    CCACHE_BASEDIR: "$CI_PROJECT_DIR"
+    CCACHE_DIR: "$CI_PROJECT_DIR/_ccache"
   cache:
+    key: $CI_JOB_NAME
     paths:
-    - apt-cache
-  artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    expire_in: 2 hours
-    when: always
-    paths:
-    - "_install${ARTIFACTS_SUFFIX}"
-    - _babl/_build${ARTIFACTS_SUFFIX}
-    - _gegl/_build${ARTIFACTS_SUFFIX}
+    - _ccache/
   before_script:
     - if [ "$CI_COMMIT_TAG" != "" ]; then
         repo=https://gitlab.gnome.org/GNOME/babl.git;
@@ -209,32 +206,36 @@ deps-debian-x64:
     - export XDG_DATA_DIRS="${GIMP_PREFIX}/share:/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
     - export GI_TYPELIB_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
   script:
-    - mkdir -p "$APT_CACHE"
-    - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
-                         clang
     - mkdir _babl/_build${ARTIFACTS_SUFFIX} && cd _babl/_build${ARTIFACTS_SUFFIX}
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
     - ninja && ninja install
     - mkdir ../../_gegl/_build${ARTIFACTS_SUFFIX} && cd ../../_gegl/_build${ARTIFACTS_SUFFIX}
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
     - ninja && ninja install
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    when: always
+    expire_in: 2 hours
+    paths:
+    - "_install${ARTIFACTS_SUFFIX}"
+    - _babl/_build${ARTIFACTS_SUFFIX}
+    - _gegl/_build${ARTIFACTS_SUFFIX}
   needs: ["image-debian-x64"]
 
 .gimp-debian-base:
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   dependencies:
     - deps-debian-x64
+  image: $CI_REGISTRY_IMAGE:build-debian-latest
+  variables:
+    CC: "ccache clang"
+    CXX: "ccache clang++"
+    CCACHE_BASEDIR: "$CI_PROJECT_DIR"
+    CCACHE_DIR: "$CI_PROJECT_DIR/_ccache"
   cache:
+    key: $CI_JOB_NAME
     paths:
-    - apt-cache
-  artifacts:
-    expire_in: 1 days
-    when: always
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    paths:
-    - "_build${ARTIFACTS_SUFFIX}"
-    - "_install${ARTIFACTS_SUFFIX}"
+    - _ccache/
   before_script:
     - export PATH="$GIMP_PREFIX/bin:$PATH"
     - gcc -print-multi-os-directory | grep . && LIB_DIR=$(gcc -print-multi-os-directory | sed 's/\.\.\///g') || LIB_DIR="lib"
@@ -243,10 +244,21 @@ deps-debian-x64:
     - export LD_LIBRARY_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     - export XDG_DATA_DIRS="${GIMP_PREFIX}/share:/usr/share${XDG_DATA_DIRS:+:$XDG_DATA_DIRS}"
     - export GI_TYPELIB_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
+    - mkdir -p _ccache/
     - git submodule update --init
+  script:
+    - mkdir -p _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    when: always
+    expire_in: 1 days
+    paths:
+    - "_install${ARTIFACTS_SUFFIX}"
+    - "_build${ARTIFACTS_SUFFIX}"
   needs: ["deps-debian-x64"]
 
 gimp-debian-x64:
+  extends: .gimp-debian-base
   rules:
     # On commits and merge requests.
     - if: '$CI_PIPELINE_SOURCE == "push"'
@@ -260,15 +272,7 @@ gimp-debian-x64:
     - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
     - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
     - if: '$GIMP_CI_SOURCES != null'
-  extends: .gimp-debian-base
-  variables:
-    CC: "clang"
-    CXX: "clang++"
   script:
-    - mkdir -p "$APT_CACHE"
-    - apt-get install -y --no-install-recommends -o dir::cache::archives="$APT_CACHE"
-                         clang
-    - mkdir -p "_build${ARTIFACTS_SUFFIX}" && cd "_build${ARTIFACTS_SUFFIX}"
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
                      -Dgi-docgen=enabled
                      -Dg-ir-doc=true
@@ -282,10 +286,6 @@ gimp-debian-x64:
       fi
     - ninja dist && ninja install
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
-    reports:
-      junit: "_build${ARTIFACTS_SUFFIX}/meson-logs/testlog.junit.xml"
     paths:
       - "_build${ARTIFACTS_SUFFIX}/config.h"
       - "_build${ARTIFACTS_SUFFIX}/meson-logs"
@@ -293,24 +293,27 @@ gimp-debian-x64:
       - "_build${ARTIFACTS_SUFFIX}/devel-docs"
       - "_build${ARTIFACTS_SUFFIX}/build/flatpak/"
       - "_install${ARTIFACTS_SUFFIX}"
+    reports:
+      junit: "_build${ARTIFACTS_SUFFIX}/meson-logs/testlog.junit.xml"
 
 gimp-debian-gcc:
+  extends: .gimp-debian-base
   rules:
     # Custom builds only (web GUI, API or schedules).
     - if: '$GIMP_CI_MESON_GCC != null'
-  extends: .gimp-debian-base
+  variables:
+    CC: "ccache gcc"
+    CXX: "ccache gcc"
   script:
-    - mkdir -p _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
     - ninja && ninja test
 
 gimp-debian-raster-icons:
+  extends: .gimp-debian-base
   rules:
     # Custom builds only (web GUI, API or schedules).
     - if: '$GIMP_CI_RASTER_ICONS != null'
-  extends: .gimp-debian-base
   script:
-    - mkdir -p _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
                      -Dvector-icons=false
     - ninja && ninja test
