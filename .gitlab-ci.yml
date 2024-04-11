@@ -394,29 +394,35 @@ packaging-flatpak-x64:
 
 ## WINDOWS 64-bit CI (cross-build crossroad) ##
 
-deps-win-x64-cross:
-  rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
-  stage: dependencies
+.win-cross:
   image: $CI_REGISTRY_IMAGE:build-debian-latest
   variables:
     XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
     XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
+  cache:
+    paths:
+    - .cache/crossroad/
+    - apt-cache
+
+.win-x64-cross:
+  rules:
+    # On commits except tags.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+    # On merge requests.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+
+deps-win-x64-cross:
+  extends: '.win-x64-cross'
+  stage: dependencies
+  variables:
     # Needed because by default, Debian has now changed
     # "sysconfig.get_default_scheme()" from "posix_prefix" to "posix_local" which
     # adds a local/ folder to the install prefix of setup.py. This environment
     # variable overrides this behavior.
     DEB_PYTHON_INSTALL_LAYOUT: "deb"
-    APT_CACHE: "${CI_PROJECT_DIR}/apt-cache"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - apt-get update
     - mkdir -p "$APT_CACHE"
@@ -441,25 +447,13 @@ deps-win-x64-cross:
   needs: ["image-debian-x64"]
 
 gimp-win-x64-cross:
-  rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+  extends:
+    - .win-cross
+    - .win-x64-cross
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   dependencies:
     - deps-win-x64-cross
     - gimp-debian-x64
-  variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - git submodule update --init
     # So that we can use gimp-console from gimp-debian-x64 project.
@@ -487,13 +481,9 @@ gimp-win-x64-cross:
       - _install-x64-cross/
 
 packaging-win-x64-nightly:
-  rules:
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+  extends:
+   - .win-cross
+   - .win-x64-cross
   stage: packaging
   dependencies:
     - gimp-win-x64-cross
@@ -524,20 +514,18 @@ packaging-win-x64-nightly:
 
 ## WINDOWS 32-bit CI (cross-build crossroad) ##
 
-deps-win-x86-cross:
+.win-x86-cross:
   rules:
     # Custom builds only (web GUI, API or schedules).
     - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
+
+deps-win-x86-cross:
+  extends:
+    - .win-cross
+    - .win-x86-cross
   stage: dependencies
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
     DEB_PYTHON_INSTALL_LAYOUT: "deb"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - apt-get update
     - mkdir -p "$APT_CACHE"
@@ -561,22 +549,14 @@ deps-win-x86-cross:
   needs: ["image-debian-x64"]
 
 gimp-win-x86-cross:
-  rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
+  extends:
+    - .win-cross
+    - .win-x86-cross
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   dependencies:
     - deps-win-x86-cross
     - deps-win-x64-cross
     - gimp-debian-x64
-  variables:
-    XDG_CACHE_HOME: "$CI_PROJECT_DIR/.cache/"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
-  cache:
-    paths:
-    - .cache/crossroad/
-    - apt-cache
   before_script:
     - git submodule update --init
     # So that we can use gimp-console from gimp-debian-x64 project.
@@ -604,16 +584,15 @@ gimp-win-x86-cross:
       - _install-x86-cross/
 
 packaging-win-x86-nightly:
-  rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_CROSSROAD_WIN32 != null'
+  extends:
+    - .win-cross
+    - .win-x86-cross
   stage: packaging
   dependencies:
     - gimp-win-x86-cross
   variables:
     BUILD_TYPE: "CI_CROSS"
     CROSSROAD_PLATFORM: "w32"
-    XDG_DATA_HOME:  "$CI_PROJECT_DIR/.local/share/"
   artifacts:
     name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
     when: always
@@ -638,25 +617,39 @@ packaging-win-x86-nightly:
 
 ## WINDOWS Aarch64 CI (native MSYS2) ##
 
-deps-win-a64:
+.win:
   rules:
     # On releases.
     - if: '$CI_COMMIT_TAG != null'
     # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN_AARCH64 != null'
     - if: '$GIMP_CI_WIN_INSTALLER != null'
     # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
-  stage: dependencies
   variables:
     BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "CLANGARM64"
     CHERE_INVOKING: "yes"
+    CCACHE_BASEDIR: "$CI_PROJECT_DIR"
+    CCACHE_DIR: "$CI_PROJECT_DIR/_ccache"
+    CCACHE_MAXSIZE: "1.0G"
+  cache:
+    paths:
+      - _ccache/
+  before_script:
+    - mkdir -p _ccache/
+  artifacts:
+    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
+    when: always
+
+.win-a64:
+  rules:
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_MSYS2_WIN_AARCH64 != null'
   tags:
     - windows-aarch64
+  variables:
+    MSYSTEM: "CLANGARM64"
   before_script:
     # C:\msys64\usr\bin\pacman --noconfirm -Syyuu
-  script:
     # Verification to prevent the job from failing because stuck pacman (ARM only),
     # since our runner keeps the status of the MSYS2 installation between jobs
     - $stuck = Test-Path -Path "C:\msys64\var\lib\pacman\db.lck" -PathType Leaf
@@ -665,46 +658,28 @@ deps-win-a64:
         Write-Output "Cleaned previous stuck pacman" }
     - taskkill /F /FI "MODULES eq msys-2.0.dll"
     - Start-Job -ScriptBlock{sleep 90; taskkill /t /F /IM "pacman.exe"}
+
+deps-win-a64:
+  extends:
+    - .win
+    - .win-a64
+  stage: dependencies
+  script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/1_build-deps-msys2.sh"
-  retry: 2
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 2 hours
     paths:
       - _install-a64
   needs: []
 
 gimp-win-a64:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN_AARCH64 != null'
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-a64
   stage: gimp
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "CLANGARM64"
-    CHERE_INVOKING: "yes"
-  tags:
-    - windows-aarch64
-  before_script:
-    # C:\msys64\usr\bin\pacman --noconfirm -Syyuu
   script:
-    - $stuck = Test-Path -Path "C:\msys64\var\lib\pacman\db.lck" -PathType Leaf
-    - if ($stuck -eq "True") {
-        Remove-Item -Force -Path "C:\msys64\var\lib\pacman\db.lck";
-        Write-Output "Cleaned previous stuck pacman" }
-    - taskkill /F /FI "MODULES eq msys-2.0.dll"
-    - Start-Job -ScriptBlock{sleep 90; taskkill /t /F /IM "pacman.exe"}
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/2_build-gimp-msys2.sh"
-  retry: 2
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - _install-a64
@@ -712,42 +687,19 @@ gimp-win-a64:
     - _build-a64/meson-*/
     # Needed by 4_dist-gimp-inno.ps1 in dist-installer-weekly
     - _build-a64/config.h
-  cache:
-    paths:
-    - _ccache/
   needs: ["deps-win-a64"]
 
 packaging-win-a64:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-a64
   stage: packaging
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "CLANGARM64"
-    CHERE_INVOKING: "yes"
-  tags:
-    - windows-aarch64
-  before_script:
-    # C:\msys64\usr\bin\pacman --noconfirm -Syyuu
+  cache: []
   script:
-    - $stuck = Test-Path -Path "C:\msys64\var\lib\pacman\db.lck" -PathType Leaf
-    - if ($stuck -eq "True") {
-        Remove-Item -Force -Path "C:\msys64\var\lib\pacman\db.lck";
-        Write-Output "Cleaned previous stuck pacman" }
-    - taskkill /F /FI "MODULES eq msys-2.0.dll"
-    - Start-Job -ScriptBlock{sleep 90; taskkill /t /F /IM "pacman.exe"}
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/3_package-gimp-uni_base.sh"
     - cd gimp-a64
     - C:\msys64\usr\bin\bash -lc "bash -x ../build/windows/gitlab-ci/3_package-gimp-uni_sym.sh"
-  retry: 2
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - gimp-a64
@@ -760,90 +712,56 @@ packaging-win-a64:
 
 ## WINDOWS x86_64 CI (native MSYS2) ##
 
-deps-win-x64:
+.win-x64:
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_MSYS2_WIN64 != null'
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
-  stage: dependencies
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "CLANG64"
-    CHERE_INVOKING: "yes"
   tags:
     - win32-ps
+  variables:
+    MSYSTEM: "CLANG64"
   before_script:
     - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
+
+deps-win-x64:
+  extends:
+    - .win
+    - .win-x64
+  stage: dependencies
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/1_build-deps-msys2.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 2 hours
     paths:
       - _install-x64
   needs: []
 
 gimp-win-x64:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN64 != null'
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-x64
   stage: gimp
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "CLANG64"
-    CHERE_INVOKING: "yes"
-  tags:
-    - win32-ps
-  before_script:
-    - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/2_build-gimp-msys2.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - _install-x64
     - _build-x64/build/windows/installer/
     - _build-x64/meson-*/
-  cache:
-    paths:
-    - _ccache/
   needs: ["deps-win-x64"]
 
 packaging-win-x64:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-x64
   stage: packaging
-  variables:
-    MSYSTEM: "CLANG64"
-    CHERE_INVOKING: "yes"
-  tags:
-    - win32-ps
-  before_script:
-    - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
+  cache: []
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/3_package-gimp-uni_base.sh"
     - cd gimp-x64
     - C:\msys64\usr\bin\bash -lc "bash -x ../build/windows/gitlab-ci/3_package-gimp-uni_sym.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - gimp-x64
@@ -852,89 +770,55 @@ packaging-win-x64:
 
 ## WINDOWS x86 CI (native MSYS2) ##
 
-deps-win-x86:
+.win-x86:
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_MSYS2_WIN32 != null'
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
-  stage: dependencies
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "MINGW32"
-    CHERE_INVOKING: "yes"
   tags:
     - win32-ps
+  variables:
+    MSYSTEM: "MINGW32"
   before_script:
     - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
+
+deps-win-x86:
+  extends:
+    - .win
+    - .win-x86
+  stage: dependencies
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/1_build-deps-msys2.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 2 hours
     paths:
       - _install-x86
   needs: []
 
 gimp-win-x86:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN32 != null'
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-x86
   stage: gimp
-  variables:
-    BUILD_TYPE: "CI_NATIVE"
-    MSYSTEM: "MINGW32"
-    CHERE_INVOKING: "yes"
-  tags:
-    - win32-ps
-  before_script:
-    - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/2_build-gimp-msys2.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - _install-x86
     - _build-x86/meson-*/
-  cache:
-    paths:
-    - _ccache/
   needs: ["deps-win-x86"]
 
 packaging-win-x86:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+  extends:
+    - .win
+    - .win-x86
   stage: packaging
-  variables:
-    MSYSTEM: "MINGW32"
-    CHERE_INVOKING: "yes"
-  tags:
-    - win32-ps
-  before_script:
-    - C:\msys64\usr\bin\pacman --noconfirm -Syyuu
+  cache: []
   script:
     - C:\msys64\usr\bin\bash -lc "bash -x ./build/windows/gitlab-ci/3_package-gimp-uni_base.sh"
     - cd gimp-x86
     - C:\msys64\usr\bin\bash -lc "bash -x ../build/windows/gitlab-ci/3_package-gimp-uni_sym.sh"
   artifacts:
-    name: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
-    when: always
     expire_in: 1 day
     paths:
     - gimp-x86
@@ -992,18 +876,11 @@ dist-flatpak-weekly:
     - 'packaging-flatpak-x64'
 
 dist-installer-weekly:
-  rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
-    # Merge requests with appropriate label.
-    - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
-  variables:
-    CHERE_INVOKING: "yes"
+  stage: distribution
+  extends:
+    - .win
   tags:
     - win32-ps
-  stage: distribution
   dependencies:
     - packaging-win-a64
     - packaging-win-x64
