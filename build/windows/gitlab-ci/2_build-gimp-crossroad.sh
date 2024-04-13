@@ -10,10 +10,10 @@ if [[ -z "$CROSSROAD_PLATFORM" ]]; then
 GIMP_APP_VERSION=$(grep GIMP_APP_VERSION _build${ARTIFACTS_SUFFIX}/config.h | head -1 | sed 's/^.*"\([^"]*\)"$/\1/')
 mkdir bin
 echo "#!/bin/sh" > bin/gimp-console-$GIMP_APP_VERSION
-gcc -print-multi-os-directory | grep . && LIB_DIR=$(gcc -print-multi-os-directory | sed 's/\.\.\///g') || LIB_DIR="lib"
-gcc -print-multiarch | grep . && LIB_SUBDIR=$(echo $(gcc -print-multiarch)'/')
-echo export LD_LIBRARY_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> bin/gimp-console-$GIMP_APP_VERSION
-echo export GI_TYPELIB_PATH="${GIMP_PREFIX}/${LIB_DIR}/${LIB_SUBDIR}girepository-1.0${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}" >> bin/gimp-console-$GIMP_APP_VERSION
+LD_LIBRARY_PATH_FROM_CI="$LD_LIBRARY_PATH"
+GI_TYPELIB_PATH_FROM_CI="$GI_TYPELIB_PATH"
+echo export LD_LIBRARY_PATH="${LD_LIBRARY_PATH_FROM_CI}" >> bin/gimp-console-$GIMP_APP_VERSION
+echo export GI_TYPELIB_PATH="${LD_LIBRARY_PATH_FROM_CI}" >> bin/gimp-console-$GIMP_APP_VERSION
 echo "${GIMP_PREFIX}/bin/gimp-console-$GIMP_APP_VERSION \"\$@\"" >> bin/gimp-console-$GIMP_APP_VERSION
 chmod u+x bin/gimp-console-$GIMP_APP_VERSION
 
