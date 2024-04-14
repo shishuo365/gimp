@@ -24,8 +24,6 @@
 # - GIMP_CI_CPPCHECK: trigger cppcheck static analysis.
 
 
-image: debian:bookworm
-
 stages:
   - prepare
   - dependencies
@@ -34,8 +32,11 @@ stages:
   - distribution
   - analysis
 
-# GitLab "default:" is buggy so let's use extensions and references
+
+# GitLab "default:" is too limited so let's use extensions and references
 .default:
+  # Default Docker image unless otherwise defined
+  image: debian:bookworm
   # Caching support
   variables:
     CCACHE_BASEDIR: "$CI_PROJECT_DIR"
@@ -66,7 +67,8 @@ variables:
   ARTIFACTS_SUFFIX: "-x64"
   GIMP_PREFIX: "${CI_PROJECT_DIR}/_install${ARTIFACTS_SUFFIX}"
 
-## prepare docker images ##
+
+## prepare (build-oriented) Docker images ##
 
 image-debian-x64:
   rules:
@@ -727,7 +729,6 @@ dev-docs:
     - if: '$CI_COMMIT_TAG != null'
   needs: ["deps-debian-x64", "gimp-debian-x64"]
   stage: distribution
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
   cache: []
   script:
     - BABL_VER=$(grep BABL_VERSION _babl/_build${ARTIFACTS_SUFFIX}/config.h | head -1 | sed 's/^.*"\([^"]*\)"$/\1/')         &&
@@ -803,10 +804,12 @@ dist-installer-weekly:
 ## Analysis ##
 
 clang-format:
+  extends: .default
   only:
     - merge_requests
   needs: []
   stage: analysis
+  cache: []
   script:
     - apt-get update
     - apt-get install -y clang-format
