@@ -176,8 +176,26 @@ image-debian-x64:
 
 ## GNU/Linux 64-bit CIs (Debian bookworm) ##
 
-.deps-debian-base:
+deps-debian-x64:
   extends: .default
+  rules:
+    # Special case (custom builds compiled with GCC).
+    - if: '$GIMP_CI_MESON_GCC != null'
+      variables:
+        CC: "ccache gcc"
+        CXX: "ccache gcc"
+    # Special case (custom builds with rasterized icons).
+    - if: '$GIMP_CI_RASTER_ICONS != null'
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_MESON_CLANG != null'
+    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
+    - if: '$GIMP_CI_SOURCES != null'
+    - if: '$GIMP_CI_FLATPAK != null'
+    # On merge requests and commits.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    # On releases.
+    - if: '$CI_COMMIT_TAG != null'
   needs: ["image-debian-x64"]
   stage: dependencies
   image: $CI_REGISTRY_IMAGE:build-debian-latest
@@ -216,12 +234,20 @@ image-debian-x64:
       - _gegl/_build${ARTIFACTS_SUFFIX}/
     expire_in: 2 hours
 
-deps-debian-x64:
-  extends: .deps-debian-base
+gimp-debian-x64:
+  extends: .default
   rules:
+    # Special case (custom builds compiled with gcc).
+    - if: '$GIMP_CI_MESON_GCC != null'
+      variables:
+        CC: "ccache gcc"
+        CXX: "ccache gcc"
+    # Special case (custom builds with rasterized icons).
+    - if: '$GIMP_CI_RASTER_ICONS != null'
+      variables:
+        MESON_OPTIONS: "-Dvector-icons=false"
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_MESON_CLANG != null'
-    - if: '$GIMP_CI_RASTER_ICONS != null'
     - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
     - if: '$GIMP_CI_SOURCES != null'
     - if: '$GIMP_CI_FLATPAK != null'
@@ -230,53 +256,18 @@ deps-debian-x64:
     - if: '$CI_PIPELINE_SOURCE == "push"'
     # On releases.
     - if: '$CI_COMMIT_TAG != null'
-
-# GitLab "rules:variables:" is buggy so let's use jobs
-deps-debian-gcc:
-  extends: .deps-debian-base
-  rules:
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MESON_GCC != null'
-  variables:
-    CC: "ccache gcc"
-    CXX: "ccache gcc"
-
-.gimp-debian-base:
-  extends: .default
   needs: ["deps-debian-x64"]
   stage: gimp
-  image: $CI_REGISTRY_IMAGE:build-debian-latest
-  before_script:
-    # Universal variables
-    - !reference [.default, before_script]
-    - mkdir -p _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
-  after_script:
-    - ccache --show-stats
-  artifacts:
-    paths:
-      - _install${ARTIFACTS_SUFFIX}/
-      - _build${ARTIFACTS_SUFFIX}/
-    expire_in: 1 days
-
-gimp-debian-x64:
-  extends: .gimp-debian-base
-  rules:
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MESON_CLANG != null'
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
-    - if: '$GIMP_CI_SOURCES != null'
-    - if: '$GIMP_CI_FLATPAK != null'
-    # On merge requests and commits.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_PIPELINE_SOURCE == "push"'
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
+  image: $GIMP_CI_MESON_CLANG$CI_REGISTRY_IMAGE:build-debian-latest
   script:
+    - mkdir -p _build${ARTIFACTS_SUFFIX} && cd _build${ARTIFACTS_SUFFIX}
     - meson setup .. -Dprefix="${GIMP_PREFIX}"
                      -Dgi-docgen=enabled
                      -Dg-ir-doc=true
+                     $MESON_OPTIONS
     - ninja
     - ninja test
+    - ccache --show-stats
     # The src should not be changed by the build. If it is, something is
     # wrong. Let's print out the diff for debugging in such case, and
     # exit to fail the CI.
@@ -289,38 +280,14 @@ gimp-debian-x64:
   artifacts:
     paths:
       - _install${ARTIFACTS_SUFFIX}/
+      - _build${ARTIFACTS_SUFFIX}/meson-logs/
       - _build${ARTIFACTS_SUFFIX}/config.h
       - _build${ARTIFACTS_SUFFIX}/meson-dist/
       - _build${ARTIFACTS_SUFFIX}/devel-docs/
       - _build${ARTIFACTS_SUFFIX}/build/flatpak/
-      - _build${ARTIFACTS_SUFFIX}/meson-logs/
     reports:
       junit: "_build${ARTIFACTS_SUFFIX}/meson-logs/testlog.junit.xml"
 
-gimp-debian-gcc:
-  extends: .gimp-debian-base
-  rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_MESON_GCC != null'
-  needs: ["deps-debian-gcc"]
-  variables:
-    CC: "ccache gcc"
-    CXX: "ccache gcc"
-  script:
-    - meson setup .. -Dprefix="${GIMP_PREFIX}"
-    - ninja
-    - ninja test
-
-gimp-debian-raster-icons:
-  extends: .gimp-debian-base
-  rules:
-    # Custom builds only (web GUI, API or schedules).
-    - if: '$GIMP_CI_RASTER_ICONS != null'
-  script:
-    - meson setup .. -Dprefix="${GIMP_PREFIX}"
-                     -Dvector-icons=false
-    - ninja
-    - ninja test
 
 include: 'https://gitlab.gnome.org/GNOME/citemplates/raw/master/flatpak/flatpak_ci_initiative.yml'
 packaging-flatpak-x64:
