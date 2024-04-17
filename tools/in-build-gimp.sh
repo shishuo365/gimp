@@ -36,3 +36,4 @@ if [ -n "$GIMP_TEMP_UPDATE_RPATH" ]; then
   done;
   unset IFS
 fi
+exit 1
