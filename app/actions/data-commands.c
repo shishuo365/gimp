@@ -286,6 +286,7 @@ data_edit_cmd_callback (GimpAction *action,
     {
       GdkMonitor *monitor = gimp_widget_get_monitor (GTK_WIDGET (view));
       GtkWidget  *dockable;
+      GtkWidget  *editor  = NULL;
 
       dockable =
         gimp_window_strategy_show_dockable_dialog (GIMP_WINDOW_STRATEGY (gimp_get_window_strategy (context->gimp)),
@@ -295,7 +296,10 @@ data_edit_cmd_callback (GimpAction *action,
                                                    g_variant_get_string (value,
                                                                          NULL));
 
-      gimp_data_editor_set_data (GIMP_DATA_EDITOR (gtk_bin_get_child (GTK_BIN (dockable))),
-                                 data);
+      if (dockable)
+        editor = gtk_bin_get_child (GTK_BIN (dockable));
+
+      if (editor)
+        gimp_data_editor_set_data (GIMP_DATA_EDITOR (editor), data);
     }
 }
