@@ -24,12 +24,14 @@ fi
 # CROSSROAD ENV
 else
 export ARTIFACTS_SUFFIX="-x64"
+export GIMP_PREFIX="`realpath ./_install`${ARTIFACTS_SUFFIX}-cross"
 
 ## The required packages for GIMP are taken from the previous job
 
 ## Build GIMP
 mkdir _build${ARTIFACTS_SUFFIX}-cross && cd _build${ARTIFACTS_SUFFIX}-cross
-crossroad meson setup .. -Dgi-docgen=disabled                 \
+crossroad meson setup .. -Dprefix="${GIMP_PREFIX}"            \
+                         -Dgi-docgen=disabled                 \
                          -Djavascript=disabled -Dlua=disabled \
                          -Dpython=disabled -Dvala=disabled
 ninja
@@ -56,6 +58,7 @@ echo "@echo off
 echo "Please run the gimp.cmd file to know the actual plug-in support." > ${CROSSROAD_PREFIX}/README.txt
 
 ## Copy built GIMP, babl and GEGL and pre-built packages to GIMP_PREFIX
+echo $CROSSROAD_PREFIX
 cp -fr $CROSSROAD_PREFIX/ _install${ARTIFACTS_SUFFIX}-cross/
 
 fi # END OF CROSSROAD ENV

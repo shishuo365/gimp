@@ -20,6 +20,7 @@ exit 0
 # CROSSROAD ENV
 else
 export ARTIFACTS_SUFFIX="-x64"
+export GIMP_PREFIX="`realpath ./_install`${ARTIFACTS_SUFFIX}-cross"
 
 ## Install the required (pre-built) packages for babl, GEGL and GIMP
 crossroad source msys2
@@ -39,12 +40,12 @@ git clone --depth $GIT_DEPTH https://gitlab.gnome.org/GNOME/gegl.git _gegl
 
 ## Build babl and GEGL
 mkdir _babl/_build${ARTIFACTS_SUFFIX}-cross/ && cd _babl/_build${ARTIFACTS_SUFFIX}-cross/
-crossroad meson setup .. -Denable-gir=false
+crossroad meson setup .. -Dprefix="${GIMP_PREFIX}" -Denable-gir=false
 ninja
 ninja install
 
 mkdir ../../_gegl/_build${ARTIFACTS_SUFFIX}-cross/ && cd ../../_gegl/_build${ARTIFACTS_SUFFIX}-cross/
-crossroad meson setup .. -Dintrospection=false
+crossroad meson setup .. -Dprefix="${GIMP_PREFIX}" -Dintrospection=false
 ninja
 ninja install
 cd ../../
