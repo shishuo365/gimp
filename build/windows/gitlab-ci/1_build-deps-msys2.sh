@@ -17,20 +17,19 @@ if [[ -z "$GITLAB_CI" ]]; then
   if [[ "$0" != "build/windows/gitlab-ci/1_build-deps-msys2.sh" ]]; then
     echo "To run this script locally, please do it from to the gimp git folder"
     exit 1
-  else
-    GIMP_DIR=$(echo "${PWD##*/}/")
-    DEPS_DIR=$(dirname $PWD)
-    cd $DEPS_DIR
   fi
   export GIT_DEPTH=1
   pacman --noconfirm -Suy
+  GIMP_DIR=$(echo "${PWD##*/}/")
+  DEPS_DIR=$(dirname $PWD)
+  cd $DEPS_DIR
 fi
 
 
 # Install the required (pre-built) packages for babl and GEGL
 DEPS_LIST=$(cat ${GIMP_DIR}build/windows/gitlab-ci/all-deps-uni.txt)
-DEPS_LIST=$(sed "s/\${MINGW_PACKAGE_PREFIX}-/${MINGW_PACKAGE_PREFIX}-/g" <<< $DEPS_LIST)
-DEPS_LIST=$(sed 's/\\//g' <<< $DEPS_LIST)
+DEPS_LIST=$(sed "s/\${MINGW_PACKAGE_PREFIX}-/${MINGW_PACKAGE_PREFIX}-/g" |
+            sed 's/\\//g' <<< $DEPS_LIST)
 
 if [[ "$MSYSTEM_CARCH" == "aarch64" ]]; then
   retry=3
@@ -96,18 +95,16 @@ configure_or_build ()
 {
   if [ ! -f "_${1}/_build/build.ninja" ]; then
     mkdir -p _${1}/_build${ARTIFACTS_SUFFIX} && cd _${1}/_build${ARTIFACTS_SUFFIX}
-    (meson setup .. -Dprefix="${GIMP_PREFIX}" $2 && \
-     ninja && ninja install) || exit 1
-    cd ../..
+    meson setup .. -Dprefix="${GIMP_PREFIX}" $2
   else
     cd _${1}/_build${ARTIFACTS_SUFFIX}
-    (ninja && ninja install) || exit 1
-    cd ../..
   fi
+  ninja
+  ninja install
+
+  ccache --show-stats
+  cd ../..
 }
 
 configure_or_build babl "-Dwith-docs=false"
-
 configure_or_build gegl "-Ddocs=false -Dworkshop=true"
-
-ccache --show-stats

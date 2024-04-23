@@ -6,14 +6,12 @@ set -e
 # https://github.com/msys2/MSYS2-packages/blob/master/filesystem/msystem
 if [[ "$MSYSTEM_CARCH" == "aarch64" ]]; then
   export ARTIFACTS_SUFFIX="-a64"
-  export MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 elif [[ "$MSYSTEM_CARCH" == "x86_64" ]]; then
   export ARTIFACTS_SUFFIX="-x64"
-  export MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 else # [[ "$MSYSTEM_CARCH" == "i686" ]];
   export ARTIFACTS_SUFFIX="-x86"
-  export MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 fi
+export MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 
 if [[ "$GITLAB_CI" ]]; then
   # XXX We've got a weird error when the prefix is in the current dir.
@@ -21,8 +19,6 @@ if [[ "$GITLAB_CI" ]]; then
   # completely ridiculous.
   rm -fr ~/_install${ARTIFACTS_SUFFIX}
   mv "_install${ARTIFACTS_SUFFIX}" ~
-
-  export MESON_OPTIONS=""
 else
   # Make the script work locally
   if [[ "$0" != "build/windows/gitlab-ci/2_build-gimp-msys2.sh" ]]; then
@@ -41,10 +37,6 @@ GIMP_DIR=""
 DEPS_CODE=$(cat build/windows/gitlab-ci/1_build-deps-msys2.sh)
 DEPS_CODE=$(sed -n '/# Install the/,/# End of install/p' <<< $DEPS_CODE)
 echo "$DEPS_CODE" | bash
-
-# Install QOI header manually
-# mingw32 package of qoi was removed from MSYS2, we have download it by ourselves
-wget -O "${MSYS2_PREFIX}/include/qoi.h" https://raw.githubusercontent.com/phoboslab/qoi/master/qoi.h
 
 
 # Build GIMP
@@ -71,13 +63,11 @@ if [ ! -f "_build${ARTIFACTS_SUFFIX}/build.ninja" ]; then
                  -Dwindows-installer=true            \
                  -Dms-store=true                     \
                  -Dbuild-id=org.gimp.GIMP_official $MESON_OPTIONS
-  ninja
-  ninja install
 else
   cd "_build${ARTIFACTS_SUFFIX}"
-  ninja
-  ninja install
 fi
+ninja
+ninja install
 
 ccache --show-stats
 
