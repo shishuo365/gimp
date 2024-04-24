@@ -48,6 +48,19 @@ function Configure-Arch ([string]$arch, [string]$arch_msix)
   New-Item -ItemType Directory -Path $arch
   Copy-Item AppxManifest.xml $arch
 
+  ## Set Identity Name
+  if ($CI_COMMIT_TAG)
+    {
+      $identity_name="GIMP"
+    }
+  else
+    {
+      $identity_name="GIMP.GIMPPreview"
+    }
+
+  (Get-Content -Path "$arch\AppxManifest.xml") | Foreach-Object {$_ -replace "@IDENTITY_NAME@","$identity_name"} |
+  Set-Content -Path "$arch\AppxManifest.xml"
+
   ## Set GIMP version
   (Get-Content -Path "$arch\AppxManifest.xml") | Foreach-Object {$_ -replace "@GIMP_VERSION@","$gimp_version"} |
   Set-Content -Path "$arch\AppxManifest.xml"
