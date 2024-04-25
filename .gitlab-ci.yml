@@ -34,14 +34,39 @@ stages:
   - analysis
   - distribution
 
-
-# Common pipelines behavior
+# Make pipelines auto cancelable when explicity set (e.g. in 'rules')
+# GitLab is quite sensitive with the "if" order so we dispose them
+# in a way to avoid as much as possible hardcoding and leaks in "rules"
 workflow:
   auto_cancel:
     on_new_commit: interruptible
 
-.default:
+# On merge requests.
+.pipeline_merge: &pipe_merge
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   interruptible: true
+  variables: {}
+
+# On commits except tags.
+.pipeline_commit: &pipe_commit
+  if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS == null && $CI_COMMIT_TAG == null'
+  interruptible: true
+  variables: {}
+
+# On releases.
+.pipeline_release: &pipe_release
+  if: '$CI_COMMIT_TAG != null'
+  interruptible: false
+  variables: {}
+
+.default:
+  # Merge requests with appropriate label.
+    # 'interruptible: true' needs to be hardcoded
+
+  # Custom builds though web GUI, API or schedules.
+  interruptible: false
+
+  # Common jobs behavior
   retry:
     max: 1
     when:
@@ -86,9 +111,9 @@ variables:
 
 .debian:
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-      interruptible: false
+    - <<: *pipe_merge
+    - <<: *pipe_commit
+    - <<: *pipe_release
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_MESON_GCC != null'
       variables:
@@ -102,9 +127,6 @@ variables:
     - if: '$GIMP_CI_MESON_CLANG != null'
     - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
     - if: '$GIMP_CI_SOURCES != null'
-    # On merge requests or commits.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS == null'
 
 image-debian-x64:
   rules:
@@ -309,10 +331,11 @@ gimp-flatpak-x64:
 # one of the test (save-and-export) requires plug-ins to be built.
   extends: .default
   rules:
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_FLATPAK != null'
     # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Flatpak package.*/'
+      interruptible: true
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_FLATPAK != null'
   needs: []
   stage: gimp
   tags:
@@ -382,12 +405,10 @@ gimp-flatpak-x64:
 .win-cross:
   extends: .default
   rules:
+    - <<: *pipe_merge
+    - <<: *pipe_commit
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
-    # On merge requests.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    # On commits except tags.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS == null && $CI_COMMIT_TAG == null'
   image: $CI_REGISTRY_IMAGE:build-debian-latest
   variables:
     # Needed because by default, Debian has now changed
@@ -439,13 +460,12 @@ gimp-win-x64-cross:
 .win:
   extends: .default
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-      interruptible: false
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_WIN_INSTALLER != null'
+    - <<: *pipe_release
     # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Windows Installer.*/'
+      interruptible: true
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_WIN_INSTALLER != null'
   variables:
     CHERE_INVOKING: "yes"
   # We use the same universal variables but not directly from PS
@@ -455,11 +475,12 @@ gimp-win-x64-cross:
   extends: .win
   rules:
     - !reference [.win, rules]
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN_AARCH64 != null'
-    # We can't set these on '.win' because MS Store don't support x86
-    - if: '$GIMP_CI_MS_STORE != null'
+    # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Microsoft Store.*/'
+      interruptible: true
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_MS_STORE != null'
+    - if: '$GIMP_CI_MSYS2_WIN_AARCH64 != null'
   tags:
     - windows-aarch64
   variables:
@@ -511,11 +532,12 @@ gimp-win-a64:
   extends: .win
   rules:
     - !reference [.win, rules]
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MSYS2_WIN64 != null'
-    # We can't set these on '.win' because MS Store don't support x86
-    - if: '$GIMP_CI_MS_STORE != null'
+    # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Microsoft Store.*/'
+      interruptible: true
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_MS_STORE != null'
+    - if: '$GIMP_CI_MSYS2_WIN64 != null'
   tags:
     - win32-ps
   variables:
@@ -598,8 +620,7 @@ gimp-win-x86:
 clang-format:
   extends: .default
   rules:
-    # On merge requests only.
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - <<: *pipe_merge
   needs: []
   stage: analysis
   cache: []
@@ -642,13 +663,10 @@ cppcheck:
 sources-debian:
   extends: .default
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-      interruptible: false
+    - <<: *pipe_commit
+    - <<: *pipe_release
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_SOURCES != null'
-    # On commits.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS == null'
   needs: ["gimp-debian-x64"]
   stage: distribution
   cache: []
@@ -667,13 +685,10 @@ sources-debian:
 dev-docs:
   extends: .default
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-      interruptible: false
+    - <<: *pipe_commit
+    - <<: *pipe_release
     # Custom builds though web GUI, API or schedules.
     - if: '$GIMP_CI_SOURCES != null'
-    # On commits.
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_OPEN_MERGE_REQUESTS == null'
   needs: ["deps-debian-x64", "gimp-debian-x64"]
   stage: distribution
   cache: []
@@ -757,13 +772,12 @@ dist-installer-weekly:
 dist-store-weekly:
   extends: .win
   rules:
-    # On releases.
-    - if: '$CI_COMMIT_TAG != null'
-      interruptible: false
-    # Custom builds though web GUI, API or schedules.
-    - if: '$GIMP_CI_MS_STORE != null'
+    - <<: *pipe_release
     # Merge requests with appropriate label.
     - if: '$CI_MERGE_REQUEST_LABELS =~ /.*5. Microsoft Store.*/'
+      interruptible: true
+    # Custom builds though web GUI, API or schedules.
+    - if: '$GIMP_CI_MS_STORE != null'
   needs: ["gimp-win-a64", "gimp-win-x64"]
   stage: distribution
   tags:
