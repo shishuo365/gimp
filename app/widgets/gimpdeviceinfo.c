@@ -536,7 +536,7 @@ gimp_device_info_set_device (GimpDeviceInfo *info,
        *  tablets with any of the version of the code. So let's keep
        *  these similar to Linux for now.
        */
-      return FALSE;
+      //return FALSE;
 #endif /* G_OS_WIN32 */
     }
   else if (! device && ! info->device)
