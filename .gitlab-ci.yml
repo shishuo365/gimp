@@ -650,6 +650,24 @@ file-plug-in-tests:
       - _log/
     expire_in: 2 days
 
+checkbashisms:
+  extends: .default
+  rules:
+    - <<: *CI_MERGE
+  needs: []
+  stage: analysis
+  cache: []
+  script:
+    - apt-get update
+    - apt-get install -y perl
+    - .gitlab/checkbashisms.sh
+  allow_failure: true
+  artifacts:
+    when: on_failure
+    paths:
+      - bashisms.log
+    expire_in: 2 days
+
 clang-format:
   extends: .default
   rules:
