@@ -25,6 +25,9 @@
 import os
 import configparser
 
+import xml
+from xml.etree.ElementTree import ElementTree, Element
+
 import gi
 gi.require_version('Gimp', '3.0')
 from gi.repository import Gimp
@@ -112,14 +115,17 @@ class ConfigLoader(object):
         log.gimp_verbose_message(msg)
 
 class FileLoadTest(object):
-    def __init__(self, file_load_plugin_name, image_type, data_path, log):
+    def __init__(self, file_load_plugin_name, image_type, data_path, log, testsuite):
         self.log = log
+        self.testsuite = testsuite
         self.data_root = data_path
         self.plugin_name = file_load_plugin_name
         self.image_type  = image_type
 
         self.unexpected_success_images = []
         self.unexpected_failure_images = []
+
+        self.failure_reason = "unknown"
 
         self.total_tests  = 0
         self.total_failed = 0
@@ -130,12 +136,14 @@ class FileLoadTest(object):
     def run_file_load(self, image_file, expected):
         if not os.path.exists(image_file):
             msg = "Regression loading " + image_file + ". File does not exist!"
+            self.failure_reason = msg
             self.log.error("--> " + msg)
             return RESULT_FAIL
 
         pdb_proc   = Gimp.get_pdb().lookup_procedure(self.plugin_name)
         if pdb_proc is None:
             msg = "Plug-in procedure '" + self.plugin_name + "' not found!"
+            self.failure_reason = msg
             self.log.error("--> " + msg)
             return RESULT_FAIL
         pdb_config = pdb_proc.create_config()
@@ -150,11 +158,13 @@ class FileLoadTest(object):
             if expected == EXPECTED_FAIL:
                 self.unexpected_success_images.append(image_file)
                 msg = "Regression loading " + image_file + ". Loading unexpectedly succeeded."
+                self.failure_reason = msg
                 self.log.error("--> " + msg)
                 return RESULT_FAIL
             elif expected == EXPECTED_TODO:
                 self.unexpected_success_images.append(image_file)
                 msg = "Loading unexpectedly succeeded for test marked TODO. Image: " + image_file
+                self.failure_reason = msg
                 self.log.error("--> " + msg)
                 return RESULT_FAIL
 
@@ -169,11 +179,13 @@ class FileLoadTest(object):
                 elif expected == EXPECTED_TODO:
                     self.unexpected_success_images.append(image_file)
                 msg = "Plug-in crashed while loading " + image_file + "."
+                self.failure_reason = msg
                 self.log.error("--> " + msg)
                 return RESULT_CRASH
             elif expected == EXPECTED_OK:
                 self.unexpected_failure_images.append(image_file)
                 msg = "Regression loading " + image_file + ". Loading unexpectedly failed."
+                self.failure_reason = msg
                 self.log.error("--> " + msg)
                 return RESULT_FAIL
             return RESULT_OK
@@ -227,6 +239,7 @@ class FileLoadTest(object):
         test_images_list = self.load_test_images(test_images)
         if not test_images_list:
             # Maybe we should create another type of test failure (test_filesystem?)
+            test_total += 1
             test_fail  += 1
             test_crash += 1
             self.total_failed += test_fail
@@ -238,18 +251,29 @@ class FileLoadTest(object):
 
         for imgfile, expected in test_images_list:
             test_result = self.run_file_load(self.data_root + image_folder + imgfile, expected)
-            if test_result == RESULT_FAIL:
-                test_fail += 1
-            elif test_result == RESULT_OK:
+            if test_result == RESULT_OK:
                 test_ok += 1
-            elif test_result == RESULT_CRASH:
-                test_crash += 1
-                test_fail  += 1
             else:
-                test_crash += 1
-                test_fail  += 1
-                msg = "Invalid test result value: " + str(test_result)
-                self.log.error(msg)
+                if test_result == RESULT_FAIL:
+                    test_fail += 1
+                elif test_result == RESULT_CRASH:
+                    test_crash += 1
+                    test_fail  += 1
+                else:
+                    test_crash += 1
+                    test_fail  += 1
+                    msg = "Invalid test result value: " + str(test_result)
+                    self.log.error(msg)
+
+                # Add failed testcase
+                el = Element("testcase")
+                el.set('name', image_folder + imgfile)
+                el.set('id', test_description)
+                self.testsuite.append(el)
+                failure = Element("failure")
+                failure.set('type', 'failure')
+                failure.text = self.failure_reason
+                el.append(failure)
 
             if expected == EXPECTED_TODO:
                 test_todo += 1
@@ -303,11 +327,11 @@ class FileLoadTest(object):
             self.log.message(msg)
 
 class RunTests(object):
-    def __init__(self, test, config_path, data_path, log):
+    def __init__(self, test, config_path, data_path, log, testsuite):
         self.test_count = 0
         self.regression_count = 0
         if os.path.exists(test.tests):
-            self.plugin_test = FileLoadTest(test.plugin, test.extension, data_path, log)
+            self.plugin_test = FileLoadTest(test.plugin, test.extension, data_path, log, testsuite)
             cfg = configparser.ConfigParser()
             cfg.read(test.tests)
             for subtest in cfg.sections():
@@ -361,6 +385,10 @@ class GimpTestRunner(object):
         self.unexpected_success_images = []
         self.unexpected_failure_images = []
 
+        el = Element("testsuites")
+        el.set('name', test_type)
+        self.xml_tree = ElementTree(el)
+
     def print_header(self, test_type):
         divider = "\n--------------------------------"
         msg  = f"\nGIMP file plug-in tests version {VERSION}\n"
@@ -403,13 +431,24 @@ class GimpTestRunner(object):
         # Load test config
         cfg = ConfigLoader(self.log, self.test_cfg.config_folder, self.test_cfg.config_file)
 
+        root = self.xml_tree.getroot()
+
         # Actual tests
         for test in cfg.tests:
             if test.enabled:
                 self.log.consoleinfo(f"\nTesting {test.extension} import using {test.plugin}...\n")
-                plugin_tests = RunTests(test, cfg.config_path, self.test_cfg.data_folder, self.log)
+                el = Element("testsuite")
+                el.set('name', test.tests)
+                plugin_tests = RunTests(test, cfg.config_path, self.test_cfg.data_folder, self.log, el)
                 self.tests_total += plugin_tests.test_count
                 self.error_total += plugin_tests.regression_count
+
+                el.set('tests', str(plugin_tests.test_count))
+                el.set('failures', str(plugin_tests.regression_count))
+                el.set('errors', '0')
+                el.set('skipped', '0')
+                root.append(el)
+
                 if plugin_tests.plugin_test is not None:
                     self.todo_total  += plugin_tests.get_todo_count()
                     self.crash_total += plugin_tests.get_crash_count()
@@ -425,6 +464,9 @@ class GimpTestRunner(object):
                 self.log.consoleinfo(f"\nFinished testing {test.extension}\n")
             else:
                 self.log.consoleinfo(f"Testing {test.extension} import using {test.plugin} is disabled.")
+
+        xml.etree.ElementTree.indent(self.xml_tree)
+        self.xml_tree.write(self.test_cfg.xml_results_file, 'UTF-8')
 
         msg  = "\n--------- Test results ---------"
         if cfg.disabled > 0:
