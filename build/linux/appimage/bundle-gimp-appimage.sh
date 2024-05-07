@@ -143,7 +143,7 @@ find_bin "gjs*"
 ### Copy Python plug-ins support
 find_bin "python*"
 find_lib "python*.*"
-conf_app PYTHONPATH "/usr" "${LIB_DIR}/${LIB_SUBDIR}python*.**"
+conf_app PYTHONPATH "/usr" "${LIB_DIR}/${LIB_SUBDIR}python3.11"
 
 ## Final adjustments
 ### Auto detect and copy deps of binaries copied above
