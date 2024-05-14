@@ -126,7 +126,6 @@ stages:
       variables:
         MESON_OPTIONS: "-Dvector-icons=false"
         VARIANT: "-raster"
-    - if: '$GIMP_CI_CROSSROAD_WIN64 != null'
     - if: '$GIMP_CI_SOURCES != null'
     - <<: *CI_RELEASE
 

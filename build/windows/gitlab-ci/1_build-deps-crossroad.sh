@@ -13,6 +13,7 @@ apt-get install -y --no-install-recommends \
 git clone --depth $GIT_DEPTH https://gitlab.freedesktop.org/crossroad/crossroad.git
 cd crossroad
 git apply ../build/windows/patches/0001-platforms-Enable-ccache.patch
+git apply ../build/windows/patches/0001-platforms-Enable-native-exe-wrapping.patch
 ./setup.py install --prefix=`pwd`/../.local
 cd ..
 exit 0

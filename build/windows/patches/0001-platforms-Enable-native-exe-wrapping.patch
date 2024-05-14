@@ -1,0 +1,25 @@
+From 39df557864c286ba65eee15fa4384571d74d4550 Mon Sep 17 00:00:00 2001
+From: Bruno Lopes <brunolopesdsilv@outlook.com>
+Date: Tue, 14 May 2024 10:57:36 -0300
+Subject: [PATCH] platforms: Enable native exe wrapping
+
+---
+ platforms/meson/toolchain-w64.meson | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/platforms/meson/toolchain-w64.meson b/platforms/meson/toolchain-w64.meson
+index b57bc6f..7d34409 100644
+--- a/platforms/meson/toolchain-w64.meson
++++ b/platforms/meson/toolchain-w64.meson
+@@ -5,7 +5,7 @@ ar = 'x86_64-w64-mingw32-ar'
+ strip = 'x86_64-w64-mingw32-strip'
+ pkgconfig = 'x86_64-w64-mingw32-pkg-config'
+ windres = 'x86_64-w64-mingw32-windres'
+-#exe_wrapper = 'wine64'
++exe_wrapper = 'wine64'
+ 
+ [host_machine]
+ system = 'windows'
+-- 
+2.45.0.windows.1
+
