@@ -19,6 +19,7 @@ exit 0
 
 
 # CROSSROAD ENV
+crossroad w64 gimp --run="build/windows/gitlab-ci/1_build-deps-crossroad.sh"
 else
 export ARTIFACTS_SUFFIX="-x64"
 

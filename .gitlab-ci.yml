@@ -431,7 +431,6 @@ deps-win-x64-cross:
     - !reference [.default, cache]
   script:
     - bash -x build/windows/gitlab-ci/1_build-deps-crossroad.sh
-    - crossroad w64 gimp --run="build/windows/gitlab-ci/1_build-deps-crossroad.sh"
   artifacts:
     paths:
       - .local/
@@ -447,7 +446,6 @@ gimp-win-x64-cross:
   stage: gimp
   script:
     - bash -x build/windows/gitlab-ci/2_build-gimp-crossroad.sh
-    - crossroad w64 gimp --run="build/windows/gitlab-ci/2_build-gimp-crossroad.sh"
     - bash -x build/windows/gitlab-ci/3_bundle-gimp-uni_base.sh
   artifacts:
     expose_as: 'Windows zip'
