@@ -20,24 +20,23 @@ if [ -z "$GITLAB_CI" ]; then
   fi
   git submodule update --init --force
   pacman --noconfirm -Suy
+  WORK_DIR=$(echo $(dirname $PWD)'/')
   export MESON_OPTIONS="-Drelocatable-bundle=no"
 fi
 
 
 # Install the required (pre-built) packages for GIMP
 # We take code from deps script to better maintenance
-GIMP_DIR=""
-DEPS_CODE=$(cat build/windows/gitlab-ci/1_build-deps-msys2.sh |
-            sed -n '/# Install the/,/# End of install/p')
-echo "$DEPS_CODE" | bash
+echo $(cat build/windows/gitlab-ci/1_build-deps-msys2.sh |
+       sed -n '/# Install the/,/# End of install/p')     | bash
 
 
 # Build GIMP
-export GIMP_PREFIX="`realpath ./_install`${ARTIFACTS_SUFFIX}"
+export GIMP_PREFIX="`realpath ${WORK_DIR}_install`${ARTIFACTS_SUFFIX}"
+export MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 ## Universal variables from .gitlab-ci.yml
-OLD_IFS=$IFS
 IFS=$'\n' VAR_ARRAY=($(cat .gitlab-ci.yml | sed -n '/export PATH=/,/GI_TYPELIB_PATH}\"/p' | sed 's/    - //'))
-IFS=$OLD_IFS
+IFS=$' \t\n'
 for VAR in "${VAR_ARRAY[@]}"; do
   eval "$VAR" || continue
 done
@@ -65,7 +64,6 @@ ccache --show-stats
 
 
 # Wrapper just for easier GIMP running
-MSYS2_PREFIX="c:/msys64${MSYSTEM_PREFIX}"
 GIMP_APP_VERSION=$(grep GIMP_APP_VERSION config.h | head -1 | sed 's/^.*"\([^"]*\)"$/\1/')
 GIMP_API_VERSION=$(grep GIMP_PKGCONFIG_VERSION config.h | head -1 | sed 's/^.*"\([^"]*\)"$/\1/')
 
@@ -115,5 +113,5 @@ make_cmd ()
 if [ "$GITLAB_CI" ]; then
   make_cmd CI %cd% ""
 else
-  make_cmd local $MSYS2_PREFIX " (please run bin/gimp-${GIMP_APP_VERSION}.exe under MSYS2)"
+  make_cmd local $MSYS2_PREFIX " (please run bin/gimp-${GIMP_APP_VERSION}.exe under $MSYSTEM shell)"
 fi
