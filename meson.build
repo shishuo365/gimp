@@ -290,7 +290,7 @@ if platform_windows and cc.get_id() == 'gcc'
 endif
 
 # Generate .pdb (CodeView) debug symbols (makes possible to debug with DIA SDK)
-pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
+#pdb_support = cc.has_argument('-gcodeview') and cc.has_link_argument('-Wl,--pdb=')
 if platform_windows and pdb_support
   compiler_args += '-gcodeview'
   linker_args += '-Wl,--pdb='
