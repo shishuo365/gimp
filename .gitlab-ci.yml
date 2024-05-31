@@ -156,6 +156,7 @@ image-debian-x64:
             build-essential
             ccache
             clang
+            lld
             cpio
             desktop-file-utils
             ffmpeg
