@@ -42,6 +42,10 @@
 
 #include "gimp-intl.h"
 
+#ifdef PLATFORM_OSX
+#import <Cocoa/Cocoa.h>
+#endif
+
 
 /* The first authors are the creators and maintainers, don't shuffle
  * them
@@ -692,6 +696,12 @@ about_dialog_timer (gpointer data)
   g_object_get (gtk_settings_get_default (),
                 "gtk-enable-animations", &use_animation,
                 NULL);
+  /* gtk-enable-animation does not currently respect MacOS's Reduced Motion
+   * setting. This check can be removed once that support is added in GTK. */
+#ifdef PLATFORM_OSX
+  use_animation =
+    [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+#endif
 
   if (dialog->animstep == 0)
     {
