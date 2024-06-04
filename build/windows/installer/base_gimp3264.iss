@@ -203,6 +203,7 @@ OutputManifestFile=gimp-{#GIMP_VERSION}-{#REVISION}-setup.txt
 
 
 ;UNINSTALLER
+SetupIconFile=setup.ico
 UninstallDisplayIcon={app}\bin\gimp-{#GIMP_APP_VERSION}.exe
 UninstallFilesDir={app}\uninst
 

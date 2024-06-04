@@ -107,6 +107,7 @@ if (Test-Path -Path $gen_path)
     Copy-Item $gen_path\lang\*isl build\windows\installer\lang\
 
     # Copy generated images into the source directory
+    Copy-Item $gen_path\*ico build\windows\installer\
     Copy-Item $gen_path\*bmp build\windows\installer\
   }
 
