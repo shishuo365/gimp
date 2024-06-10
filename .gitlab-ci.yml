@@ -350,10 +350,6 @@ gimp-flatpak-x64:
     # Replace with your manifest path
     MANIFEST_PATH: "build/linux/flatpak/org.gimp.GIMP-nightly.json"
     RUNTIME_REPO: "https://nightly.gnome.org/gnome-nightly.flatpakrepo"
-    # Replace with your application name, as written in the manifest
-    FLATPAK_MODULE: "gimp"
-    APP_ID: "org.gimp.GIMP"
-    BUNDLE: "gimp-git.flatpak"
   cache:
     - key: ${CI_JOB_NAME}-pkg
       paths:
@@ -373,22 +369,22 @@ gimp-flatpak-x64:
     - date && date -u
 
     # Configure manifest
-    - flatpak build-init ${GIMP_PREFIX} $APP_ID org.gnome.Sdk org.gnome.Platform
+    - flatpak build-init ${GIMP_PREFIX} org.gimp.GIMP org.gnome.Sdk org.gnome.Platform
     - flatpak build ${GIMP_PREFIX} meson setup _build${ARTIFACTS_SUFFIX} || echo "Generated log"
     - GIMP_APP_VERSION=$(grep 'Project version' _build${ARTIFACTS_SUFFIX}/meson-logs/meson-log.txt | head -1 | sed -e 's/^.*[^0-9]\([0-9]*\.[0-9]*\.[0-9]*\).*$/\1/' -e 's/\([0-9]\+\.[0-9]\+\)\..*/\1/')
     - cp build/linux/flatpak/org.gimp.GIMP-nightly.json.in build/linux/flatpak/org.gimp.GIMP-nightly.json
     - sed -i "s/@GIMP_APP_VERSION@/$GIMP_APP_VERSION/g" build/linux/flatpak/org.gimp.GIMP-nightly.json
 
     # GNOME script to customize the manifest
-    - rewrite-flatpak-manifest ${MANIFEST_PATH} ${FLATPAK_MODULE} ${CONFIG_OPTS}
+    - rewrite-flatpak-manifest ${MANIFEST_PATH} gimp ${CONFIG_OPTS}
 
     # Build deps and GIMP
     # (Our script is too long for Gitlab and no complete output would be collected
     # To make debugging actually possible, let's save logs as a file.)
-    - flatpak-builder --ccache --user --disable-rofiles-fuse flatpak_app --repo=repo ${BRANCH:+--default-branch=$BRANCH} ${MANIFEST_PATH} &>flatpak-builder.log
+    - flatpak-builder --ccache --user --disable-rofiles-fuse flatpak_app --repo=repo ${BRANCH:+--default-branch=$BRANCH} ${MANIFEST_PATH}
 
     # Generate a Flatpak bundle
-    - flatpak build-bundle repo ${BUNDLE} --runtime-repo=${RUNTIME_REPO} ${APP_ID} ${BRANCH}
+    - flatpak build-bundle repo gimp-git.flatpak --runtime-repo=${RUNTIME_REPO} org.gimp.GIMP ${BRANCH}
     - tar cf repo.tar repo/
   artifacts:
     paths:
