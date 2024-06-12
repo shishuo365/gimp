@@ -91,6 +91,40 @@ foreach ($langfile in $langsArray)
   }
 
 
+# Patch 'AppVerName' against Inno pervasive behavior: https://groups.google.com/g/innosetup/c/w0sebw5YAeg
+if ($REVISION -eq '0')
+  {
+    $AppVer = $GIMP_VERSION
+  }
+else
+  {
+    $AppVer = "$GIMP_VERSION.$REVISION"
+  }
+
+function fix_msg ([string]$langfile)
+{
+  $langsArray_local = Get-ChildItem *.isl -Name
+  foreach ($langfile in $langsArray_local)
+    {
+      $msg = Get-Content $langfile
+      $linenumber = $msg | Select-String 'SetupWindowTitle' | Select-Object -ExpandProperty LineNumber
+      $msg | ForEach-Object { If ($_.ReadCount -eq $linenumber) {$_ -Replace "%1", "%1 $AppVer"} Else {$_} } |
+             Set-Content -Path "$langfile" -Encoding UTF8
+      $msg = Get-Content $langfile
+      $linenumber = $msg | Select-String 'UninstallAppFullTitle' | Select-Object -ExpandProperty LineNumber
+      $msg | ForEach-Object { If ($_.ReadCount -eq $linenumber) {$_ -Replace "%1", "%1 $AppVer"} Else {$_} } |
+             Set-Content -Path "$langfile" -Encoding UTF8
+    }
+}
+
+$GIMP_DIR = $PWD
+Set-Location $INNOPATH\Languages
+fix_msg
+Set-Location $INNOPATH\Languages\Unofficial
+fix_msg
+
+
+cd $GIMP_DIR
 $gen_path = Resolve-Path -Path "_build-*\build\windows\installer" | Select-Object -ExpandProperty Path
 if (Test-Path -Path $gen_path)
   {
