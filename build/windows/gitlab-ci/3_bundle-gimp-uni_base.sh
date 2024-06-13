@@ -34,84 +34,81 @@ else
 fi
 export GIMP_DISTRIB="`realpath ./gimp`${ARTIFACTS_SUFFIX}"
 
+
+bundle ()
+{
+  path=$(echo "$1" | cut -d'/' -f3-)
+  dir_or_file="${path: -1}"
+  if [ "$dir_or_file" = '/' ]; then
+    mkdir -p "$GIMP_DISTRIB/$path"
+    cp -r "$1" "$GIMP_DISTRIB/$(dirname $GIMP_DISTRIB/$path)"
+  else
+    path_from_file=${path%/*}
+    mkdir -p "$GIMP_DISTRIB/$path_from_file"
+    cp -r "$1" "$GIMP_DISTRIB/$(dirname $GIMP_DISTRIB/$path_from_file)"
+}
+
+clean ()
+{
+  find "$1" -iname $2 -execdir rm '{}' \;
+}
+
+
 ## Copy a previously built wrapper at tree root, less messy than
 ## having to look inside bin/, in the middle of all the DLLs.
-## This utility also configure the interpreters for local builds.
-mkdir -p ${GIMP_DISTRIB}
-cp -fr ${GIMP_PREFIX}/*.cmd ${GIMP_DISTRIB}/
+## This also configure the interpreters for local builds as courtesy.
+bundle "$GIMP_PREFIX/*.cmd"
 
 
-## Modules.
-mkdir ${GIMP_DISTRIB}/etc
-cp -fr ${MSYS_PREFIX}/etc/fonts/ ${GIMP_DISTRIB}/etc/
-cp -fr ${GIMP_PREFIX}/etc/gimp/ ${GIMP_DISTRIB}/etc/
-cp -fr ${MSYS_PREFIX}/etc/gtk-*/ ${GIMP_DISTRIB}/etc/
+## Settings.
+bundle "$GIMP_PREFIX/etc/gimp/"
+### Needed for fontconfig work
+bundle "$MSYS_PREFIX/etc/fonts/"
 
 
-## Headers.
-mkdir ${GIMP_DISTRIB}/include
-cp -fr ${GIMP_PREFIX}/include/babl-*/ ${GIMP_DISTRIB}/include/
-cp -fr ${GIMP_PREFIX}/include/gegl-*/ ${GIMP_DISTRIB}/include/
-cp -fr ${GIMP_PREFIX}/include/gimp-*/ ${GIMP_DISTRIB}/include/
+## Headers (in evaluation).
+#bundle $GIMP_PREFIX/include/babl-*/
+#bundle $GIMP_PREFIX/include/gegl-*/
+#bundle $GIMP_PREFIX/include/gimp-*/
 
 
 ## Library data.
-mkdir ${GIMP_DISTRIB}/lib
-cp -fr ${GIMP_PREFIX}/lib/babl-*/ ${GIMP_DISTRIB}/lib/
-cp -fr ${MSYS_PREFIX}/lib/gdk-pixbuf-*/ ${GIMP_DISTRIB}/lib/
-cp -fr ${GIMP_PREFIX}/lib/gegl-*/ ${GIMP_DISTRIB}/lib/
-cp -fr ${GIMP_PREFIX}/lib/gimp/ ${GIMP_DISTRIB}/lib/
-cp -fr ${MSYS_PREFIX}/lib/gio/ ${GIMP_DISTRIB}/lib/
-
-aList=$(find ${GIMP_DISTRIB}/lib/ -iname '*.a') && aArray=($aList)
-for a in "${aArray[@]}"; do
-  rm $a
-done
-rm ${GIMP_DISTRIB}/lib/gegl-*/*.json
+bundle "$GIMP_PREFIX/lib/babl-*/"
+bundle "$MSYS_PREFIX/lib/gdk-pixbuf-*/*/loaders/libpixbufloader-png.dll"
+bundle "$MSYS_PREFIX/lib/gdk-pixbuf-*/*/loaders/libpixbufloader-svg.dll"
+bundle "$GIMP_PREFIX/lib/gegl-*/"
+bundle "$GIMP_PREFIX/lib/gimp/"
+bundle "$MSYS_PREFIX/lib/gio/"
+clean "$GIMP_DISTRIB/lib" *.a
 
 
 ## Resources.
-mkdir ${GIMP_DISTRIB}/share
-cp -fr ${MSYS_PREFIX}/share/ghostscript/ ${GIMP_DISTRIB}/share/
-rm -r ${GIMP_DISTRIB}/share/ghostscript/*/doc
-cp -fr ${GIMP_PREFIX}/share/gimp/ ${GIMP_DISTRIB}/share/
-GLIB_PATH=$(echo ${MSYS_PREFIX}/share/glib-*/schemas | sed "s|${MSYS_PREFIX}/||g")
-mkdir -p ${GIMP_DISTRIB}/${GLIB_PATH}
-cp -fr ${MSYS_PREFIX}/share/glib-*/schemas/ ${GIMP_DISTRIB}/share/glib-*/
-
-### Adwaita can be used as the base icon set.
-mkdir -p ${GIMP_DISTRIB}/share/icons
-cp -fr ${MSYS_PREFIX}/share/icons/Adwaita/ ${GIMP_DISTRIB}/share/icons/
-cp -fr ${GIMP_PREFIX}/share/icons/hicolor/ ${GIMP_DISTRIB}/share/icons/
-
-cp -fr ${MSYS_PREFIX}/share/libthai/ ${GIMP_DISTRIB}/share/
-cp -fr ${MSYS_PREFIX}/share/libwmf/ ${GIMP_DISTRIB}/share/
-
+bundle "$GIMP_PREFIX/share/gimp/"
+### Needed for file dialogs
+bundle "$MSYS_PREFIX/share/glib-*/schemas/"
+### https://gitlab.gnome.org/GNOME/gimp/-/issues/6165
+bundle "$MSYS_PREFIX/share/icons/Adwaita/"
+### https://gitlab.gnome.org/GNOME/gimp/-/issues/5080
+bundle "$GIMP_PREFIX/share/icons/hicolor/"
+### Needed for wmf work
+bundle "$MSYS_PREFIX/share/libwmf/"
 ### Only copy from langs supported in GIMP.
-cp -fr ${GIMP_PREFIX}/share/locale/ ${GIMP_DISTRIB}/share/
+bundle "$GIMP_PREFIX/share/locale/"
 for dir in ${GIMP_DISTRIB}/share/locale/*/; do
   lang=`basename "$dir"`;
-  # TODO: ideally we could be a bit more accurate and copy only the
-  # language files from our dependencies and iso_639.mo. But let's go
-  # with this for now, especially as each lang may have different
-  # translation availability.
-  if [ -d "${MSYS_PREFIX}/share/locale/${lang}/LC_MESSAGES/" ]; then
-    cp -fr "${MSYS_PREFIX}/share/locale/${lang}/LC_MESSAGES/"*.mo "${GIMP_DISTRIB}/share/locale/${lang}/LC_MESSAGES/"
+  if [ -d "$MSYS_PREFIX/share/locale/$lang/LC_MESSAGES/" ]; then
+    bundle "$MSYS_PREFIX/share/locale/$lang/LC_MESSAGES/"gimp*.mo
+    bundle "$MSYS_PREFIX/share/locale/$lang/LC_MESSAGES/"gegl*.mo
+    bundle "$MSYS_PREFIX/share/locale/$lang/LC_MESSAGES/"gtk*.mo
+    bundle "$MSYS_PREFIX/share/locale/$lang/LC_MESSAGES/"iso_639*.mo
   fi
-done;
-
-mkdir -p ${GIMP_DISTRIB}/share/man/man1
-mkdir -p ${GIMP_DISTRIB}/share/man/man5
-cp -fr ${GIMP_PREFIX}/share/man/man1/gimp* ${GIMP_DISTRIB}/share/man/man1/
-cp -fr ${GIMP_PREFIX}/share/man/man5/gimp* ${GIMP_DISTRIB}/share/man/man5/
-mkdir ${GIMP_DISTRIB}/share/metainfo
-cp -fr ${GIMP_PREFIX}/share/metainfo/org.gimp*.xml ${GIMP_DISTRIB}/share/metainfo/
-cp -fr ${MSYS_PREFIX}/share/mypaint-data/ ${GIMP_DISTRIB}/share/
-cp -fr ${MSYS_PREFIX}/share/poppler/ ${GIMP_DISTRIB}/share/
-
-### Only one iso-codes file is useful.
-mkdir -p ${GIMP_DISTRIB}/share/xml/iso-codes
-cp -fr ${MSYS_PREFIX}/share/xml/iso-codes/iso_639.xml ${GIMP_DISTRIB}/share/xml/iso-codes/
+done
+### Needed for welcome page
+bundle "$GIMP_PREFIX/share/metainfo/org.gimp*.xml"
+### mypaint brushes
+bundle "$MSYS_PREFIX/share/mypaint-data/"
+### Needed for lang selection in Preferences
+bundle "$MSYS_PREFIX/share/xml/iso-codes/iso_639.xml"
 
 
 ## Executables and DLLs.
@@ -120,17 +117,15 @@ cp -fr ${MSYS_PREFIX}/share/xml/iso-codes/iso_639.xml ${GIMP_DISTRIB}/share/xml/
 rm -f done-dll.list
 
 ### Minimal (and some additional) executables for the 'bin' folder
-mkdir ${GIMP_DISTRIB}/bin
-binArray=("${MSYS_PREFIX}/bin/bzip2.exe"
-          "${MSYS_PREFIX}/bin/dot.exe"
-          "${MSYS_PREFIX}/bin/gdbus.exe"
-          "${MSYS_PREFIX}/bin/gdk-pixbuf-query-loaders.exe"
-          "${GIMP_PREFIX}/bin/gegl*.exe"
-          "${GIMP_PREFIX}/bin/gimp*.exe"
-          "${MSYS_PREFIX}/bin/gspawn*.exe")
-for exe in "${binArray[@]}"; do
-  cp -fr $exe ${GIMP_DISTRIB}/bin/
-done
+bundle "$MSYS_PREFIX/bin/bzip2.exe"
+### https://gitlab.gnome.org/GNOME/gimp/-/issues/6045
+bundle "$MSYS_PREFIX/bin/dot.exe"
+### https://gitlab.gnome.org/GNOME/gimp/-/issues/8877
+bundle "$MSYS_PREFIX/bin/gdbus.exe"
+# https://gitlab.gnome.org/GNOME/gimp/-/issues/10580
+bundle "$GIMP_PREFIX/bin/gegl*.exe"
+bundle "$GIMP_PREFIX/bin/gimp*.exe"
+
 
 ### .pdb (CodeView) debug symbols
 ### crossroad don't have LLVM/Clang backend yet
@@ -140,37 +135,25 @@ done
 
 ## Optional executables, .DLLs and resources for GObject Introspection support
 if [[ ! "$CI_JOB_NAME" =~ "cross" ]]; then
-  cp -fr ${MSYS_PREFIX}/bin/libgirepository-*.dll ${GIMP_DISTRIB}/bin/
-  python3 build/windows/gitlab-ci/3_bundle-gimp-uni_dep.py ${GIMP_DISTRIB}/bin/libgirepository-*.dll ${GIMP_PREFIX}/ ${MSYS_PREFIX}/ ${GIMP_DISTRIB} --output-dll-list done-dll.list
-  cp -fr ${MSYS_PREFIX}/lib/girepository-*/ ${GIMP_DISTRIB}/lib/
-  cp -fr ${GIMP_PREFIX}/lib/girepository-*/* ${GIMP_DISTRIB}/lib/girepository-*/
-  cp -fr ${GIMP_PREFIX}/share/gir-*/ ${GIMP_DISTRIB}/share/
+  bundle "$MSYS_PREFIX/bin/libgirepository-*.dll"
+  bundle "$GIMP_PREFIX/lib/girepository-*/*"
 
-  cp -fr ${MSYS_PREFIX}/bin/luajit.exe ${GIMP_DISTRIB}/bin/
-  cp -fr ${MSYS_PREFIX}/lib/lua/ ${GIMP_DISTRIB}/lib/
-  cp -fr ${MSYS_PREFIX}/share/lua/ ${GIMP_DISTRIB}/share/
+  bundle "$MSYS_PREFIX/bin/luajit.exe"
+  bundle "$MSYS_PREFIX/lib/lua/"
 
-  cp -fr ${MSYS_PREFIX}/bin/python*.exe ${GIMP_DISTRIB}/bin/
-  cp -fr ${MSYS_PREFIX}/lib/python*/ ${GIMP_DISTRIB}/lib/
-
-  cp -fr ${GIMP_PREFIX}/share/vala/ ${GIMP_DISTRIB}/share/
+  bundle "$MSYS_PREFIX/bin/python*.exe"
+  bundle "$MSYS_PREFIX}/lib/python*/"
 else
   # Just to ensure there is no introspected files that will output annoying warnings
   # This is needed because meson.build files can have flaws
-  goiList=$(find ${GIMP_DISTRIB} \( -iname '*.lua' -or -iname '*.py' -or -iname '*.scm' -or -iname '*.vala' \)) && goiArray=($goiList)
-  for goi in "${goiArray[@]}"; do
-    rm $goi
-  done
+  clean "$GIMP_DISTRIB" '*.lua'
+  clean "$GIMP_DISTRIB" '*.py'
+  clean "$GIMP_DISTRIB" '*.scm'
+  clean "$GIMP_DISTRIB" '*.vala'
 fi
 
-### Needed DLLs for the executables in the 'bin' folder
-binList=$(find ${GIMP_DISTRIB}/bin/ -iname '*.exe') && binArray=($binList)
-for bin in "${binArray[@]}"; do
-  python3 build/windows/gitlab-ci/3_bundle-gimp-uni_dep.py $bin ${GIMP_PREFIX}/ ${MSYS_PREFIX}/ ${GIMP_DISTRIB} --output-dll-list done-dll.list;
-done
-
-### Needed DLLs for the executables and DLLs in the 'lib' sub-folders
-libList=$(find ${GIMP_DISTRIB}/lib/ \( -iname '*.dll' -or -iname '*.exe' \)) && libArray=($libList)
+### Needed DLLs for the executables or DLLs in the 'bin'  and lib' sub-folders
+libArray=($(find "$GIMP_DISTRIB" \( -iname '*.dll' -or -iname '*.exe' \)))
 for lib in "${libArray[@]}"; do
   python3 build/windows/gitlab-ci/3_bundle-gimp-uni_dep.py $lib ${GIMP_PREFIX}/ ${MSYS_PREFIX}/ ${GIMP_DISTRIB} --output-dll-list done-dll.list;
 done
