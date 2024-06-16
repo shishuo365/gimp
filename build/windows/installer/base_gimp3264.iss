@@ -226,6 +226,7 @@ WelcomeFontSize=12
 Name: "en"; MessagesFile: "compiler:Default.isl,lang\en.setup.isl"
 #include "base_po-msg.list"
 
+
 [Types]
 ;Name: normal; Description: "{cm:TypeTypical}"
 Name: full; Description: "{cm:TypeFull}"
@@ -234,39 +235,48 @@ Name: custom; Description: "{cm:TypeCustom}"; Flags: iscustom
 
 [Components]
 ;Required components (minimal install)
-Name: gimp32; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Flags: fixed; Check: Check3264('32')
-Name: gimp64; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Flags: fixed; Check: Check3264('x64')
-Name: gimpARM64; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Flags: fixed; Check: Check3264('arm64')
+Name: gimp32; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Check: Check3264('32')
+Name: gimp64; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Check: Check3264('x64')
+Name: gimpARM64; Description: "{cm:ComponentsGimp,{#GIMP_VERSION}}"; Types: full compact custom; Check: Check3264('arm64')
 
-Name: deps32; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone fixed; Check: Check3264('32')
-Name: deps64; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone fixed; Check: Check3264('x64')
-Name: depsARM64; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone fixed; Check: Check3264('arm64')
+Name: deps32; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone; Check: Check3264('32')
+Name: deps64; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone; Check: Check3264('x64')
+Name: depsARM64; Description: "{cm:ComponentsDeps}"; Types: full compact custom; Flags: checkablealone; Check: Check3264('arm64')
 
 ;Optional components (complete install)
 #ifdef DEBUG_SYMBOLS
-Name: debug; Description: "{cm:ComponentsDebug}"; Types: full custom; Flags: disablenouninstallwarning
+Name: debug32; Description: "{cm:ComponentsDebug}"; Types: full compact custom; Flags: checkablealone disablenouninstallwarning; Check: Check3264('32')
+Name: debug64; Description: "{cm:ComponentsDebug}"; Types: full compact custom; Flags: checkablealone disablenouninstallwarning; Check: Check3264('x64')
+Name: debugARM64; Description: "{cm:ComponentsDebug}"; Types: full compact custom; Flags: checkablealone disablenouninstallwarning; Check: Check3264('arm64')
 #endif
 
 ;Ghostscript
-Name: gs; Description: "{cm:ComponentsGhostscript}"; Types: full custom
+Name: gs32; Description: "{cm:ComponentsGhostscript}"; Types: full custom; Check: Check3264('32')
+Name: gs64; Description: "{cm:ComponentsGhostscript}"; Types: full custom; Check: Check3264('x64')
+Name: gsARM64; Description: "{cm:ComponentsGhostscript}"; Types: full custom; Check: Check3264('arm64')
+
+#ifdef LUA
+Name: lua32; Description: "{cm:ComponentsLua}"; Types: full custom; Check: Check3264('32')
+Name: lua64; Description: "{cm:ComponentsLua}"; Types: full custom; Check: Check3264('x64')
+Name: luaARM64; Description: "{cm:ComponentsLua}"; Types: full custom; Check: Check3264('arm64')
+#endif
+
+#ifdef PYTHON
+Name: py32; Description: "{cm:ComponentsPython}"; Types: full custom; Check: Check3264('32')
+Name: py64; Description: "{cm:ComponentsPython}"; Types: full custom; Check: Check3264('x64')
+Name: pyARM64; Description: "{cm:ComponentsPython}"; Types: full custom; Check: Check3264('arm64')
+#endif
 
 ;Locales
 Name: loc; Description: "{cm:ComponentsTranslations}"; Types: full custom
 #include "base_po-cmp.list"
 
-#ifdef LUA
-Name: lua; Description: "{cm:ComponentsLua}"; Types: full custom
-#endif
-
 ;MyPaint Brushes
 Name: mypaint; Description: "{cm:ComponentsMyPaint}"; Types: full custom
 
-#ifdef PYTHON
-Name: py; Description: "{cm:ComponentsPython}"; Types: full custom
-#endif
-
 ;32-bit TWAIN support
 Name: gimp32on64; Description: "{cm:ComponentsGimp32}"; Types: full custom; Flags: checkablealone; Check: Check3264('64')
+
 
 [Tasks]
 Name: desktopicon; Description: "{cm:AdditionalIconsDesktop}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -287,30 +297,37 @@ Source: "installsplash_small.bmp"; Flags: dontcopy
 
 #ifndef NOFILES
 #define COMMON_FLAGS="recursesubdirs restartreplace uninsrestartdelete ignoreversion"
-;Required neutral components (minimal install)
+
+;Required arch-neutral components (compact install)
 #define GIMP_ARCHS="gimp32 or gimp64 or gimpARM64"
-Source: "{#GIMP_DIR32}\etc\*"; DestDir: "{app}\etc"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
-Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\environ\*"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\environ"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
+#define OPTIONAL_EXT="*.debug,*.lua,*.py"
+Source: "{#GIMP_DIR32}\etc\gimp\*"; DestDir: "{app}\etc\gimp"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\environ\default.env"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\environ"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
 Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\interpreters\gimp-script-fu-interpreter.interp"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
-Source: "{#GIMP_DIR32}\share\gimp\*"; DestDir: "{app}\share\gimp"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS} createallsubdirs
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\extensions\*"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\extensions"; Excludes: "*.dll,*.exe,{#OPTIONAL_EXT}"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\plug-ins\*"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\plug-ins"; Excludes: "*.dll,*.exe,{#OPTIONAL_EXT}"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\share\gimp\*"; DestDir: "{app}\share\gimp"; Excludes: "{#OPTIONAL_EXT}"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS} createallsubdirs
+Source: "{#GIMP_DIR32}\share\icons\hicolor\*"; DestDir: "{app}\share\icons\hicolor"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
 Source: "{#GIMP_DIR32}\share\metainfo\*"; DestDir: "{app}\share\metainfo"; Components: {#GIMP_ARCHS}; Flags: {#COMMON_FLAGS}
 
 #define DEPS_ARCHS="deps32 or deps64 or depsARM64"
-Source: "{#DEPS_DIR32}\etc\*"; DestDir: "{app}\etc"; Excludes: "\gimp"; Components: {#DEPS_ARCHS}; Flags: {#COMMON_FLAGS}
-Source: "{#DEPS_DIR32}\share\*"; DestDir: "{app}\share"; Excludes: "\gimp\*,\metainfo\*,\locale\*,\mypaint-data\*,"; Components: {#DEPS_ARCHS}; Flags: {#COMMON_FLAGS} createallsubdirs
+Source: "{#DEPS_DIR32}\etc\*"; DestDir: "{app}\etc"; Excludes: "gimp"; Components: {#DEPS_ARCHS}; Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\lib\girepository-1.0\*"; DestDir: "{app}\lib\girepository-1.0"; Components: {#DEPS_ARCHS}; Flags: {#COMMON_FLAGS}
+Source: "{#DEPS_DIR32}\share\*"; DestDir: "{app}\share"; Excludes: "gimp,icons\hicolor,metainfo,locale,mypaint-data"; Components: {#DEPS_ARCHS}; Flags: {#COMMON_FLAGS} createallsubdirs
 
-;Optional neutral components (complete install)
+;Optional arch-neutral components (full install)
+#ifdef LUA
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\interpreters\lua.interp"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters"; Components: (lua32 or lua64 or luaARM64); Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\*.lua"; DestDir: "{app}"; Components: (lua32 or lua64 or luaARM64); Flags: {#COMMON_FLAGS}
+#endif
+#ifdef PYTHON
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\environ\py*.env"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\environ"; Components: (py32 or py64 or pyARM64); Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\interpreters\pygimp.interp"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters"; Components: (py32 or py64 or pyARM64); Flags: {#COMMON_FLAGS}
+Source: "{#GIMP_DIR32}\*.py"; DestDir: "{app}"; Components: (py32 or py64 or pyARM64); Flags: {#COMMON_FLAGS}
+#endif
 Source: "{#GIMP_DIR32}\share\locale\*"; DestDir: "{app}\share\locale"; Components: loc; Flags: dontcopy {#COMMON_FLAGS}
 #include "base_po-files.list"
-#ifdef LUA
-Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\interpreters\lua.interp"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters"; Components: lua and ({#GIMP_ARCHS}); Flags: {#COMMON_FLAGS}
-#endif
 Source: "{#DEPS_DIR32}\share\mypaint-data\*"; DestDir: "{app}\share\mypaint-data"; Components: mypaint; Flags: {#COMMON_FLAGS}
-#ifdef PYTHON
-Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\interpreters\pygimp.interp"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters"; Components: py and ({#GIMP_ARCHS}); Flags: {#COMMON_FLAGS}
-Source: "{#GIMP_DIR32}\lib\gimp\{#GIMP_API_VERSION}\plug-ins\*.py"; DestDir: "{app}\lib\gimp\{#GIMP_API_VERSION}\plug-ins"; Components: py; Flags: {#COMMON_FLAGS}
-#endif
-
 
 ;files arch specific
 ;i686
@@ -813,7 +830,7 @@ var i,j: Integer;
 begin
 	DebugMsg('ComponentsListOnClick','');
 
-	Components := ['Gimp','Deps','Debug','Translations','MyPaint','Python','Ghostscript','Lua','Gimp32'];
+	Components := ['Gimp','Deps','Debug', 'Ghostscript','Lua','Python','Translations','MyPaint','Gimp32'];
 	ComponentDesc := '';
 
 	for i := 0 to TNewCheckListBox(pSender).Items.Count - 1 do
