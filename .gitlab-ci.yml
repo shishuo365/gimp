@@ -820,6 +820,8 @@ dist-store-weekly:
   artifacts:
     expose_as: 'Windows msix'
     paths:
-    - build/windows/store/_Output/
+    - gimp-git.msixupload
+    - gimp-git.msixbundle
+    - pseudo-gimp.pfx
     - store.log
     expire_in: 8 days
