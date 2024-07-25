@@ -223,7 +223,6 @@ libgimp_sources = [
   'gimppixbuf.c',
   'gimpplugin_pdb.c',
   'gimpunit_pdb.c',
-  'gimpunitcache.c',
   'gimptilebackendplugin.c',
 ]
 
