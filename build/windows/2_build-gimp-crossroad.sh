@@ -47,9 +47,11 @@ export PATH="$PWD/${PARENT_DIR}.local/bin:$PWD/bin:$PATH"
 export XDG_DATA_HOME="$PWD/${PARENT_DIR}.local/share"
 crossroad w64 gimp --run="build/windows/2_build-gimp-crossroad.sh"
 else
-export ARTIFACTS_SUFFIX="-cross"
 
-## The required packages for GIMP are taken from the previous job
+## The required packages for GIMP are taken from the result of previous script
+
+## Prepare env (no env var is needed, all are auto set to CROSSROAD_PREFIX)
+export ARTIFACTS_SUFFIX="-cross"
 
 ## Build GIMP
 if [ ! -f "_build$ARTIFACTS_SUFFIX/build.ninja" ]; then

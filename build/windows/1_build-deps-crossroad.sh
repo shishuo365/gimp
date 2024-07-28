@@ -19,28 +19,15 @@ if [ -z "$GITLAB_CI" ]; then
   cd $(dirname $PWD)
 fi
 
-## Clone crossroad and some deps (follow master branch)
-clone_or_pull ()
-{
-  if [ ! -d "_$1" ]; then
-    if [ ! "$2" ]; then
-      domain=https://gitlab.gnome.org/gnome
-    else
-      domain=$2
-    fi
-    git clone --depth $GIT_DEPTH $domain/$1 _$1
-  else
-    cd _$1 && git pull && cd ..
-  fi
-}
 
+## Install crossroad and its deps
 if [ "$GITLAB_CI" ]; then
   apt-get install -y --no-install-recommends \
                      wine                    \
                      wine64
 fi
-clone_or_pull crossroad https://gitlab.freedesktop.org/crossroad
-cd _crossroad
+git clone --depth $GIT_DEPTH https://gitlab.freedesktop.org/crossroad/crossroad
+cd crossroad
 git apply ../${GIMP_DIR}build/windows/patches/0001-platforms-Enable-ccache.patch | continue
 # Needed because Debian adds by default a local/ folder to the install
 # prefix of setup.py. This environment variable overrides this behavior.
@@ -48,16 +35,12 @@ export DEB_PYTHON_INSTALL_LAYOUT="deb"
 ./setup.py install --prefix=`pwd`/../.local
 cd ..
 
-clone_or_pull babl
-clone_or_pull gegl
-
 
 # CROSSROAD ENV
 export PATH="$PWD/.local/bin:$PATH"
 export XDG_DATA_HOME="$PWD/.local/share"
 crossroad w64 gimp --run="${GIMP_DIR}build/windows/1_build-deps-crossroad.sh"
 else
-export ARTIFACTS_SUFFIX="-cross"
 
 ## Install the required (pre-built) packages for babl, GEGL and GIMP
 crossroad source msys2
@@ -68,23 +51,15 @@ if [ $? -ne 0 ]; then
   exit 1;
 fi
 
-## Build babl and GEGL
-configure_or_build ()
-{
-  if [ ! -f "_$1/_build$ARTIFACTS_SUFFIX/build.ninja" ]; then
-    mkdir -p _$1/_build$ARTIFACTS_SUFFIX && cd _$1/_build$ARTIFACTS_SUFFIX
-    crossroad meson setup .. $2
-  else
-    cd _$1/_build$ARTIFACTS_SUFFIX
-  fi
-  ninja
-  ninja install
-  ccache --show-stats
-  cd ../..
-}
+## Prepare env (no env var is needed, all are auto set to CROSSROAD_PREFIX)
+export ARTIFACTS_SUFFIX="-cross"
 
-configure_or_build babl '-Denable-gir=false'
-configure_or_build gegl '-Dintrospection=false'
+## Build babl and GEGL
+source "$(cat build/windows/1_build-deps-msys2.sh | sed -n '/self_build ()/,/# End of self_build/p' |
+          sed -e 's/meson/crossroad meson/g' -e "s/_build/_build$ARTIFACTS_SUFFIX/g")"
+
+self_build babl '-Denable-gir=false'
+self_build gegl '-Dintrospection=false'
 
 ## FIXME: Build manually gio 'giomodule.cache' to fix error about
 ## absent libgiognutls.dll that prevents generating loaders.cache
