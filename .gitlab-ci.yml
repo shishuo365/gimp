@@ -165,8 +165,8 @@ image-debian-x64:
             cpio
             desktop-file-utils
             ffmpeg
-            g++-mingw-w64-x86-64-posix
-            gcc-mingw-w64-x86-64-posix
+            g++-mingw-w64-x86-64-win32
+            gcc-mingw-w64-x86-64-win32
             gettext
             ghostscript
             gi-docgen
