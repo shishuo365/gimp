@@ -1079,12 +1079,12 @@ xcf_load_add_effects (XcfInfo   *info,
             {
               FilterData *data = iter->data;
 
-              if (! data->icon_name)
-                data->icon_name = g_strdup ("gimp-gegl");
-
               if (! data->unsupported_operation)
                 {
                   GimpDrawableFilter *filter = NULL;
+
+                  if (! data->icon_name)
+                    data->icon_name = g_strdup ("gimp-gegl");
 
                   filter = gimp_drawable_filter_new (GIMP_DRAWABLE (layer),
                                                      data->name, data->operation,
@@ -1455,36 +1455,30 @@ xcf_load_image_props (XcfInfo   *info,
 
         case PROP_USER_UNIT:
           {
-            gchar     *unit_strings[5] = { 0 };
+            gchar     *unit_strings[5];
             float      factor;
             guint32    digits;
             GimpUnit  *unit;
             GList     *iter;
-            gint       n_fields = 3;
             gint       i;
 
             xcf_read_float  (info, &factor,      1);
             xcf_read_int32  (info, &digits,      1);
+            xcf_read_string (info, unit_strings, 5);
 
-            /* Depending on XCF version, read more or less strings. */
-            if (info->file_version < 21)
-              n_fields = 5;
-            xcf_read_string (info, unit_strings, n_fields);
-
-            for (i = 0; i < n_fields; i++)
+            for (i = 0; i < 5; i++)
               if (unit_strings[i] == NULL)
                 unit_strings[i] = g_strdup ("");
 
             for (iter = info->gimp->user_units; iter; iter = iter->next)
               {
                 unit = iter->data;
-                /* if the factor and the name match some unit in unitrc,
-                 * use the unitrc unit
+                /* if the factor and the identifier match some unit
+                 * in unitrc, use the unitrc unit
                  */
-                if (ABS (gimp_unit_get_factor (unit) - factor) < 1e-5 &&
-                    (strcmp (unit_strings[0], gimp_unit_get_name (unit)) == 0 ||
-                     (info->file_version < 21 &&
-                      strcmp (unit_strings[4], gimp_unit_get_name (unit)) == 0)))
+                if ((ABS (gimp_unit_get_factor (unit) - factor) < 1e-5) &&
+                    (strcmp (unit_strings[0],
+                             gimp_unit_get_identifier (unit)) == 0))
                   {
                     break;
                   }
@@ -1495,15 +1489,17 @@ xcf_load_image_props (XcfInfo   *info,
                * flag.
                */
               unit = _gimp_unit_new (info->gimp,
-                                     unit_strings[4] && strlen (unit_strings[4]) > 0 ? unit_strings[4] : unit_strings[0],
+                                     unit_strings[0],
                                      (gdouble) factor,
                                      digits,
                                      unit_strings[1],
-                                     unit_strings[2]);
+                                     unit_strings[2],
+                                     unit_strings[3],
+                                     unit_strings[4]);
 
             gimp_image_set_unit (image, unit);
 
-            for (i = 0; i < n_fields; i++)
+            for (i = 0; i < 5; i++)
               g_free (unit_strings[i]);
           }
          break;
@@ -3365,15 +3361,18 @@ xcf_load_effect (XcfInfo      *info,
   xcf_read_string (info, &string, 1);
   filter->operation_name = string;
 
-  if (! gegl_has_operation (filter->operation_name))
+  if (! gegl_has_operation (filter->operation_name) ||
+      ! g_strcmp0 (filter->operation_name, "gegl:nop"))
     {
       filter->unsupported_operation = TRUE;
 
-      gimp_message (info->gimp, G_OBJECT (info->progress),
-                    GIMP_MESSAGE_WARNING,
-                    "XCF Warning: the \"%s\" (%s) filter is "
-                    "not installed. It was discarded.",
-                    filter->name, filter->operation_name);
+      /* Silently discard gegl:nop, but warn about others */
+      if (g_strcmp0 (filter->operation_name, "gegl:nop"))
+        gimp_message (info->gimp, G_OBJECT (info->progress),
+                      GIMP_MESSAGE_WARNING,
+                      "XCF Warning: the \"%s\" (%s) filter is "
+                      "not installed. It was discarded.",
+                      filter->name, filter->operation_name);
 
       return filter;
     }
