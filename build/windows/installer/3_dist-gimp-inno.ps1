@@ -1,119 +1,117 @@
 #!/usr/bin/env pwsh
 
 # Parameters
-param ($GIMP_VERSION,
-       $REVISION,
-       $GIMP_APP_VERSION,
-       $GIMP_API_VERSION,
-       $BUILD_DIR = '..\..\..\_build',
-       $GIMP_BASE = '..\..\..\',
+param ($revision = '0',
+       $GIMP_BASE = "$PWD",
+       $BUILD_DIR = "$GIMP_BASE\_build",
        $GIMP32 = 'gimp-x86',
        $GIMP64 = 'gimp-x64',
        $GIMPA64 = 'gimp-a64')
 
-if ((-Not $GIMP_VERSION) -or (-Not $GIMP_APP_VERSION) -or (-Not $GIMP_API_VERSION))
-  {
-    $CONFIG_PATH = '_build\config.h'
-  }
-
-if (-Not $GIMP_VERSION)
-  {
-    $GIMP_VERSION = Get-Content -Path "$CONFIG_PATH"                         | Select-String 'GIMP_VERSION'        |
-                    Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
-  }
-
-if (-Not $REVISION)
-  {
-    $REVISION = "0"
-  }
-
-if (-Not $GIMP_APP_VERSION)
-  {
-    $GIMP_APP_VERSION = Get-Content -Path "$CONFIG_PATH"                             | Select-String 'GIMP_APP_VERSION "'  |
-                        Foreach-Object {$_ -replace '#define GIMP_APP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
-  }
-
-if (-Not $GIMP_API_VERSION)
-  {
-    $GIMP_API_VERSION = Get-Content -Path "$CONFIG_PATH"                                   | Select-String 'GIMP_PKGCONFIG_VERSION' |
-                        Foreach-Object {$_ -replace '#define GIMP_PKGCONFIG_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
-  }
+# This script needs a bit of MSYS2 to work
+$Env:CHERE_INVOKING = "yes"
 
 
-# This is needed for some machines without TLS 1.2 enabled connecting to the internet
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12, [Net.SecurityProtocolType]::Tls13
+# 1. GET INNO
+Write-Output "(INFO): installing Inno"
 
-# Install or Update Inno Setup
-Invoke-WebRequest -URI "https://jrsoftware.org/download.php/is.exe" -OutFile "..\is.exe"
-..\is.exe /VERYSILENT /SUPPRESSMSGBOXES /CURRENTUSER /SP- /LOG="..\innosetup.log"
+## Download Inno
+## (We need to ensure that TLS 1.2 is enabled because of some runners)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile ..\is.exe
+
+## Install or Update Inno
+..\is.exe /VERYSILENT /SUPPRESSMSGBOXES /CURRENTUSER /SP- #/LOG="..\innosetup.log"
 Wait-Process is
+$inno_version = Get-ItemProperty (Resolve-Path Registry::'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup*') | Select-Object -ExpandProperty DisplayVersion
+#$inno_version = (Get-Item ..\is.exe).VersionInfo.ProductVersion
+Remove-Item ..\is.exe
+Write-Output "(INFO): Installed Inno: $inno_version"
 
-# Get Inno install path
-$log = Get-Content -Path '..\innosetup.log' | Select-String 'ISCC.exe'
-$pattern = '(?<=filename: ).+?(?=\\ISCC.exe)'
-$INNOPATH = [regex]::Matches($log, $pattern).Value
+## Get Inno install path
+$INNO_PATH = Get-ItemProperty (Resolve-Path Registry::'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup*') | Select-Object -ExpandProperty InstallLocation
+Set-Alias iscc "$INNO_PATH\iscc.exe"
 
-# Get Inno install path (fallback)
-#$INNOPATH = Get-ItemProperty -Path Registry::'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1' |
-#Select-Object -ExpandProperty "InstallLocation"
-# if ($INNOPATH -eq "")
-#   {
-#     $INNOPATH = Get-ItemProperty -Path Registry::'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1' |
-#     Select-Object -ExpandProperty "InstallLocation"
-#   }
-
-
-# Download Official translations (not present in a Inno release yet)
-function download_lang_official ([string]$langfile)
-{
-  if (Test-Path -Path "$langfile" -PathType Leaf)
-    {
-      Remove-Item -Path "$langfile" -Force
-    }
-  Invoke-WebRequest -URI "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/${langfile}" -OutFile "$INNOPATH/Languages/${langfile}"
-}
-
-#New-Item -ItemType Directory -Path "$INNOPATH/Languages/" -Force
+## Get Inno install path (fallback)
+#$log = Get-Content ..\innosetup.log | Select-String ISCC.exe
+#pattern = '(?<=filename: ).+?(?=\\ISCC.exe)'
+#$INNOPATH = [regex]::Matches($log, $pattern).Value
 
 
-# Download Unofficial translations (of unknown quality and maintenance)
+# 2. GET GLOBAL INFO
+$CONFIG_PATH = "$BUILD_DIR\config.h"
+if (-not (Test-Path "$CONFIG_PATH"))
+  {
+    Write-Host "(ERROR): config.h file not found. You can run 'build/windows/2_build-gimp-msys2.sh --relocatable' or configure GIMP with 'meson setup' on some MSYS2 shell to generate it.'" -ForegroundColor red
+    exit 1
+  }
+
+## Get AppVer (GIMP version as we use on Inno)
+$gimp_version = Get-Content "$CONFIG_PATH"                               | Select-String 'GIMP_VERSION'        |
+                Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
+$APPVER = $gimp_version
+
+if ($revision -ne '0')
+  {
+    $APPVER = "$gimp_version.$revision"
+  }
+
+Write-Output "(INFO): GIMP version: $APPVER"
+
+## FIXME: Our Inno scripts can't construct an one-arch installer
+if (-not (Test-Path "$GIMP32"))
+  {
+    Write-Host "(ERROR): $GIMP32 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
+  }
+if (-not (Test-Path "$GIMP64"))
+  {
+    Write-Host "(ERROR): $GIMP64 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
+  }
+if (-not (Test-Path "$GIMPA64"))
+  {
+    Write-Host "(ERROR): $GIMPA64 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
+  }
+if ((-not (Test-Path "$GIMP32")) -or (-not (Test-Path "$GIMP64")) -or (-not (Test-Path "$GIMPA64")))
+  {
+    exit 1
+  }
+
+Write-Output "(INFO): Arch: universal (x86, x64 and arm64)"
+
+
+# 3. PREPARE LANGS
+
+## Download Official translations not present in a Inno release yet
+#function download_lang_official ([string]$langfile)
+#{
+#  Invoke-WebRequest -URI "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/${langfile}" -OutFile "$INNOPATH/Languages/${langfile}"
+#}
+
+## Download unofficial translations (of unknown quality and maintenance)
 # Cf. https://jrsoftware.org/files/istrans/
-New-Item -ItemType Directory -Path "$INNOPATH/Languages/Unofficial/" -Force
+New-Item "$INNOPATH/Languages/Unofficial/" -ItemType Directory -Force | Out-Null
 
 $xmlObject = New-Object XML
 $xmlObject.Load("$PWD\build\windows\installer\lang\iso_639_custom.xml")
 $langsArray = $xmlObject.iso_639_entries.iso_639_entry |
               Select-Object -ExpandProperty inno_code  | Where-Object { $_ -like "*Unofficial*" }
-
 foreach ($langfile in $langsArray)
   {
     $langfileUnix = $langfile.Replace('\\', '/')
-    Invoke-WebRequest -URI "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/$langfileUnix" -OutFile "$INNOPATH/$langfileUnix"
+    Invoke-WebRequest https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/$langfileUnix -OutFile "$INNOPATH/$langfileUnix"
   }
 
-
-# Patch 'AppVerName' against Inno pervasive behavior: https://groups.google.com/g/innosetup/c/w0sebw5YAeg
-if ($REVISION -eq '0')
-  {
-    $AppVer = $GIMP_VERSION
-  }
-else
-  {
-    $AppVer = "$GIMP_VERSION.$REVISION"
-  }
-
-function fix_msg ([string]$langsdir)
+## Patch 'AppVerName' against Inno pervasive behavior: https://groups.google.com/g/innosetup/c/w0sebw5YAeg
+function fix_msg ([string]$langsdir, [string]$param)
 {
   #Prefer MSYS2 since PowerShell/.NET doesn't handle well files with mixed encodings
-  $GIMP_DIR = $PWD
-  Copy-Item build/windows/installer/lang/fix_msg.sh $langsdir
+  Copy-Item $GIMP_BASE/build/windows/installer/lang/fix_msg.sh $langsdir
   Set-Location $langsdir
-  (Get-Content fix_msg.sh) | Foreach-Object {$_ -replace "AppVer","$AppVer"} |
+  (Get-Content fix_msg.sh) | Foreach-Object {$_ -replace "AppVer","$APPVER"} |
   Set-Content fix_msg.sh
-  $Env:CHERE_INVOKING = "yes"
-  C:\msys64\usr\bin\bash -lc "bash fix_msg.sh"
+  C:\msys64\usr\bin\bash -lc "bash fix_msg.sh $param"
   Remove-Item fix_msg.sh
-  Set-Location $GIMP_DIR
+  Set-Location $GIMP_BASE
 
   #$langsArray_local = Get-ChildItem *.isl -Name
   #foreach ($langfile in $langsArray_local)
@@ -121,41 +119,76 @@ function fix_msg ([string]$langsdir)
     #  $msg = Get-Content $langfile
     #  $linenumber = $msg | Select-String 'SetupWindowTitle' | Select-Object -ExpandProperty LineNumber
     #  $msg | ForEach-Object { If ($_.ReadCount -eq $linenumber) {$_ -Replace "%1", "%1 $AppVer"} Else {$_} } |
-    #         Set-Content -Path "$langfile" -Encoding UTF8
+    #         Set-Content "$langfile" -Encoding UTF8
     #  $msg = Get-Content $langfile
     #  $linenumber = $msg | Select-String 'UninstallAppFullTitle' | Select-Object -ExpandProperty LineNumber
     #  $msg | ForEach-Object { If ($_.ReadCount -eq $linenumber) {$_ -Replace "%1", "%1 $AppVer"} Else {$_} } |
-    #         Set-Content -Path "$langfile" -Encoding UTF8
+    #         Set-Content "$langfile" -Encoding UTF8
     #}
 }
 
-fix_msg $INNOPATH
-fix_msg $INNOPATH\Languages
-fix_msg $INNOPATH\Languages\Unofficial
+Write-Output "(INFO): patching Inno lang files with $APPVER"
+fix_msg $INNO_PATH
+fix_msg $INNO_PATH\Languages
+fix_msg $INNO_PATH\Languages\Unofficial
 
 
-# Construct now the installer
+# 4. SPLIT DEBUG SYMBOLS
+Write-Output "(INFO): extracting .debug symbols from bundles"
+
+#$Env:MSYSTEM = "MINGW32"
+#C:\msys64\usr\bin\bash -lc "bash build/windows/installer/3_dist-gimp-inno_sym.sh >/dev/null 2>&1"
+
+$Env:MSYSTEM = "CLANGARM64"
+C:\msys64\usr\bin\bash -lc "bash build/windows/installer/3_dist-gimp-inno_sym.sh >/dev/null 2>&1"
+
+
+# 5. CONSTRUCT .EXE INSTALLER
+$INSTALLER="gimp-${APPVER}-setup.exe"
+Write-Output "(INFO): constructing $INSTALLER installer"
+
+## Get GIMP versions used in some versioned files and dirs
+$gimp_app_version = Get-Content "$CONFIG_PATH"                                   | Select-String 'GIMP_APP_VERSION "'  |
+                    Foreach-Object {$_ -replace '#define GIMP_APP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
+
+$gimp_api_version = Get-Content "$CONFIG_PATH"                                         | Select-String 'GIMP_PKGCONFIG_VERSION' |
+                    Foreach-Object {$_ -replace '#define GIMP_PKGCONFIG_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
+
+## Compile installer
 Set-Location build/windows/installer
-Set-Alias -Name 'iscc' -Value "${INNOPATH}\iscc.exe"
-iscc -DGIMP_VERSION="$GIMP_VERSION" -DREVISION="$REVISION" -DGIMP_APP_VERSION="$GIMP_APP_VERSION" -DGIMP_API_VERSION="$GIMP_API_VERSION" -DBUILD_DIR="$BUILD_DIR" -DGIMP_DIR="$GIMP_BASE" -DDIR32="$GIMP32" -DDIR64="$GIMP64" -DDIRA64="$GIMPA64" -DDEPS_DIR="$GIMP_BASE" -DDDIR32="$GIMP32" -DDDIR64="$GIMP64" -DDDIRA64="$GIMPA64" -DDEBUG_SYMBOLS -DLUA -DPYTHON base_gimp3264.iss
+iscc -DGIMP_VERSION="$gimp_version" -DREVISION="$revision" -DGIMP_APP_VERSION="$gimp_app_version" -DGIMP_API_VERSION="$gimp_api_version" -DBUILD_DIR="$BUILD_DIR" -DGIMP_DIR="$GIMP_BASE" -DDIR32="$GIMP32" -DDIR64="$GIMP64" -DDIRA64="$GIMPA64" -DDEPS_DIR="$GIMP_BASE" -DDDIR32="$GIMP32" -DDDIR64="$GIMP64" -DDDIRA64="$GIMPA64" -DDEBUG_SYMBOLS -DLUA -DPYTHON base_gimp3264.iss | Out-Null
+## The log (also called manifest by Inno) is defined in the base_gimp3264.iss script
+
+## Revert AppVer patches
+fix_msg $INNO_PATH -Clean
+fix_msg $INNO_PATH\Languages -Clean
+fix_msg $INNO_PATH\Languages\Unofficial -Clean
 
 # Test if the installer was created and return success/failure.
-if (Test-Path -Path "_Output/gimp-${GIMP_VERSION}-setup.exe" -PathType Leaf)
+if (Test-Path "$GIMP_BASE/$INSTALLER" -PathType Leaf)
   {
-    Set-Location _Output/
-    $INSTALLER="gimp-${GIMP_VERSION}-setup.exe"
-    Get-FileHash $INSTALLER -Algorithm SHA256 | Out-File -FilePath "${INSTALLER}.SHA256SUMS"
-    Get-FileHash $INSTALLER -Algorithm SHA512 | Out-File -FilePath "${INSTALLER}.SHA512SUMS"
+    if ($GITLAB_CI)
+      {
+        New-Item _Output -ItemType Directory | Out-Null
+        Move-Item $GIMP_BASE/$INSTALLER _Output
+        Get-ChildItem *.log | Move-Item _Output
+
+        if ($CI_COMMIT_TAG)
+          {
+            Write-Output "(INFO): generating checksums for $INSTALLER"
+            Get-FileHash _Output/$INSTALLER -Algorithm SHA256 | Out-File _Output/$INSTALLER.SHA256SUMS
+            Get-FileHash _Output/$INSTALLER -Algorithm SHA512 | Out-File _Output/$INSTALLER.SHA512SUMS
+          }
+      }
 
     # Return to git golder
-    Set-Location ..\..\..\..\
+    Set-Location $GIMP_BASE
 
-    exit 0
   }
 else
   {
     # Return to git golder
-    Set-Location ..\..\..\
+    Set-Location $GIMP_BASE
 
     exit 1
   }
