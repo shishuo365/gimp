@@ -395,8 +395,14 @@ gimp_tool_options_editor_save_clicked (GtkWidget             *widget,
 {
   if (gtk_widget_get_sensitive (editor->p->restore_button) /* evil but correct */)
     {
-      gimp_tool_options_editor_menu_popup (editor, widget,
-                                           "/tool-options-popup/Tool Options Menu/Save Tool Preset");
+      gchar *path;
+
+      path = g_strdup_printf("/tool-options-popup/%s/%s",
+                             _("Tool Options Menu"), _("Save Tool Preset"));
+
+      gimp_tool_options_editor_menu_popup (editor, widget, path);
+
+      g_free (path);
     }
   else
     {
@@ -410,16 +416,28 @@ static void
 gimp_tool_options_editor_restore_clicked (GtkWidget             *widget,
                                           GimpToolOptionsEditor *editor)
 {
-  gimp_tool_options_editor_menu_popup (editor, widget,
-                                       "/tool-options-popup/Tool Options Menu/Restore Tool Preset");
+  gchar *path;
+
+  path = g_strdup_printf("/tool-options-popup/%s/%s", _("Tool Options Menu"),
+                         _("Restore Tool Preset"));
+
+  gimp_tool_options_editor_menu_popup (editor, widget, path);
+
+  g_free (path);
 }
 
 static void
 gimp_tool_options_editor_delete_clicked (GtkWidget             *widget,
                                          GimpToolOptionsEditor *editor)
 {
-  gimp_tool_options_editor_menu_popup (editor, widget,
-                                       "/tool-options-popup/Tool Options Menu/Delete Tool Preset");
+  gchar *path;
+
+  path = g_strdup_printf("/tool-options-popup/%s/%s", _("Tool Options Menu"),
+                         _("Delete Tool Preset"));
+
+  gimp_tool_options_editor_menu_popup (editor, widget, path);
+
+  g_free (path);
 }
 
 static void
