@@ -125,74 +125,71 @@ gimp_operation_color_balance_process (GeglOperation       *operation,
                                       const GeglRectangle *roi,
                                       gint                 level)
 {
-  GimpOperationPointFilter *point  = GIMP_OPERATION_POINT_FILTER (operation);
-  GimpColorBalanceConfig   *config = GIMP_COLOR_BALANCE_CONFIG (point->config);
-  gfloat                   *src    = in_buf;
-  gfloat                   *dest   = out_buf;
+  GimpOperationPointFilter *point     = GIMP_OPERATION_POINT_FILTER (operation);
+  GimpColorBalanceConfig   *config    = GIMP_COLOR_BALANCE_CONFIG (point->config);
+  GeglColor                *hsl_color = gegl_color_new ("black");
+  const Babl               *format    = babl_format_with_space ("HSL float", NULL);
+  gfloat                   *src       = in_buf;
+  gfloat                   *dest      = out_buf;
 
   if (! config)
     return FALSE;
 
   while (samples--)
     {
-      gfloat r = src[RED];
-      gfloat g = src[GREEN];
-      gfloat b = src[BLUE];
-      gfloat r_n;
-      gfloat g_n;
-      gfloat b_n;
+      gfloat  r = src[RED];
+      gfloat  g = src[GREEN];
+      gfloat  b = src[BLUE];
+      gdouble r_n;
+      gdouble g_n;
+      gdouble b_n;
+      gfloat  hsl[3];
 
-      GimpRGB rgb = { r, g, b};
-      GimpHSL hsl;
+      gegl_color_set_rgba_with_space (hsl_color, r, g, b, 1.0, NULL);
+      gegl_color_get_pixel (hsl_color, format, hsl);
 
-      gimp_rgb_to_hsl (&rgb, &hsl);
-
-      r_n = gimp_operation_color_balance_map (r, hsl.l,
+      r_n = gimp_operation_color_balance_map (r, hsl[2],
                                               config->cyan_red[GIMP_TRANSFER_SHADOWS],
                                               config->cyan_red[GIMP_TRANSFER_MIDTONES],
                                               config->cyan_red[GIMP_TRANSFER_HIGHLIGHTS]);
 
-      g_n = gimp_operation_color_balance_map (g, hsl.l,
+      g_n = gimp_operation_color_balance_map (g, hsl[2],
                                               config->magenta_green[GIMP_TRANSFER_SHADOWS],
                                               config->magenta_green[GIMP_TRANSFER_MIDTONES],
                                               config->magenta_green[GIMP_TRANSFER_HIGHLIGHTS]);
 
-      b_n = gimp_operation_color_balance_map (b, hsl.l,
+      b_n = gimp_operation_color_balance_map (b, hsl[2],
                                               config->yellow_blue[GIMP_TRANSFER_SHADOWS],
                                               config->yellow_blue[GIMP_TRANSFER_MIDTONES],
                                               config->yellow_blue[GIMP_TRANSFER_HIGHLIGHTS]);
 
       if (config->preserve_luminosity)
         {
-          GimpHSL hsl2;
+          gfloat hsl2[3];
 
-          rgb.r = r_n;
-          rgb.g = g_n;
-          rgb.b = b_n;
-          gimp_rgb_to_hsl (&rgb, &hsl);
+          gegl_color_set_rgba_with_space (hsl_color, r_n, g_n, b_n, 1.0, NULL);
+          gegl_color_get_pixel (hsl_color, format, hsl);
 
-          rgb.r = r;
-          rgb.g = g;
-          rgb.b = b;
-          gimp_rgb_to_hsl (&rgb, &hsl2);
+          gegl_color_set_rgba_with_space (hsl_color, r, g, b, 1.0, NULL);
+          gegl_color_get_pixel (hsl_color, format, hsl2);
 
-          hsl.l = hsl2.l;
+          hsl[2] = hsl2[2];
 
-          gimp_hsl_to_rgb (&hsl, &rgb);
+          gegl_color_set_pixel (hsl_color, format, hsl);
 
-          r_n = rgb.r;
-          g_n = rgb.g;
-          b_n = rgb.b;
+          gegl_color_get_rgba_with_space (hsl_color, &r_n, &g_n, &b_n, NULL,
+                                          NULL);
         }
 
-      dest[RED]   = r_n;
-      dest[GREEN] = g_n;
-      dest[BLUE]  = b_n;
+      dest[RED]   = (gfloat) r_n;
+      dest[GREEN] = (gfloat) g_n;
+      dest[BLUE]  = (gfloat) b_n;
       dest[ALPHA] = src[ALPHA];
 
       src  += 4;
       dest += 4;
     }
+  g_object_unref (hsl_color);
 
   return TRUE;
 }

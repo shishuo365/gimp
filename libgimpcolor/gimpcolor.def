@@ -65,10 +65,6 @@ EXPORTS
 	gimp_color_transform_new_proofing
 	gimp_color_transform_process_buffer
 	gimp_color_transform_process_pixels
-	gimp_hsl_get_type
-	gimp_hsl_set
-	gimp_hsl_set_alpha
-	gimp_hsl_to_rgb
 	gimp_hsv_clamp
 	gimp_hsv_get_type
 	gimp_hsv_set
@@ -95,7 +91,6 @@ EXPORTS
 	gimp_rgb_set
 	gimp_rgb_set_alpha
 	gimp_rgb_set_uchar
-	gimp_rgb_to_hsl
 	gimp_rgb_to_hsv
 	gimp_rgba_add
 	gimp_rgba_distance

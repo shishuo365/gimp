@@ -41,7 +41,6 @@ typedef struct _GimpParamSpecColor GimpParamSpecColor;
 
 typedef struct _GimpRGB  GimpRGB;
 typedef struct _GimpHSV  GimpHSV;
-typedef struct _GimpHSL  GimpHSL;
 
 /**
  * GimpRGB:
@@ -71,21 +70,6 @@ struct _GimpRGB
 struct _GimpHSV
 {
   gdouble h, s, v, a;
-};
-
-/**
- * GimpHSL:
- * @h: the hue component
- * @s: the saturation component
- * @l: the lightness component
- * @a: the alpha component
- *
- * Used to keep HSL and HSLA colors. All components are in a range of
- * [0.0..1.0].
- **/
-struct _GimpHSL
-{
-  gdouble h, s, l, a;
 };
 
 
