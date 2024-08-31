@@ -70,26 +70,26 @@ prep_pkg ()
   apt-get install -y --no-install-recommends $1 >/dev/null 2>&1
 }
 
-find_bin ()
+bundle
 {
-  find /usr/bin -name ${1} -execdir cp -r '{}' $OPT_PREFIX/bin \;
-  find /bin -name ${1} -execdir cp -r '{}' $OPT_PREFIX/bin \;
-}
+  case $1 in
+    bin)
+      find /usr/bin -name ${1##*/} -execdir cp -r '{}' $OPT_PREFIX/bin \;
+      find /bin -name ${1##*/} -execdir cp -r '{}' $OPT_PREFIX/bin \;
+      ;;
 
-find_lib ()
-{
-  mkdir -p $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR}
-  find /usr/${LIB_DIR}/${LIB_SUBDIR} -maxdepth 1 -name ${1} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
-  find /usr/${LIB_DIR} -maxdepth 1 -name ${1} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
-  find /${LIB_DIR}/${LIB_SUBDIR} -maxdepth 1 -name ${1} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
-  find /${LIB_DIR} -maxdepth 1 -name ${1} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
-}
+    lib)
+      mkdir -p $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR}
+      find /usr/${LIB_DIR}/${LIB_SUBDIR} -maxdepth 1 -name ${1##*/} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
+      find /${LIB_DIR}/${LIB_SUBDIR} -maxdepth 1 -name ${1##*/} -execdir cp -r '{}' $OPT_PREFIX/${LIB_DIR}/${LIB_SUBDIR} \;
+      ;;
 
-find_dat ()
-{
-  DAT_PATH=$(echo $1 | sed 's|/usr/||g')
-  mkdir -p $OPT_PREFIX/$DAT_PATH
-  cp -r $1/$2 $OPT_PREFIX/$DAT_PATH/$3
+    share)
+      DAT_PATH=$(echo $1 | sed 's|share/||g')
+      mkdir -p $OPT_PREFIX/$DAT_PATH
+      cp -r /usr/$1/$2 $OPT_PREFIX/$DAT_PATH/$3
+      ;;
+  esac
 }
 
 conf_app ()
@@ -123,8 +123,8 @@ conf_app LD_LINUX "/usr" "lib64/ld-*.so.*"
 find_dat "/usr/share/glib-*/schemas" "*"
 ### Glib commonly required modules
 prep_pkg "gvfs"
-find_lib "gvfs*"
-find_lib "gio*"
+bundle "lib/gvfs*"
+bundle "lib/gio*"
 conf_app GIO_MODULE_DIR "/usr" "${LIB_DIR}/${LIB_SUBDIR}gio"
 ### GTK needed files
 prep_pkg "gnome-icon-theme"
@@ -134,7 +134,7 @@ conf_app GDK_PIXBUF_MODULEDIR "/usr" "${LIB_DIR}/${LIB_SUBDIR}gdk-pixbuf-*/*.*.*
 conf_app GDK_PIXBUF_MODULE_FILE "/usr" "${LIB_DIR}/${LIB_SUBDIR}gdk-pixbuf-*/*.*.*"
 ### GTK commonly required modules
 prep_pkg "libibus-1.0-5"
-find_lib "libibus*"
+bundle "lib/libibus*"
 prep_pkg "ibus-gtk3"
 prep_pkg "libcanberra-gtk3-module"
 prep_pkg "libxapp-gtk3-module"
@@ -148,26 +148,26 @@ conf_app GEGL_PATH "$OPT_PREFIX" "${LIB_DIR}/${LIB_SUBDIR}gegl-*"
 conf_app GIMP3_SYSCONFDIR "$OPT_PREFIX" "etc/gimp/*"
 conf_app GIMP3_DATADIR "$OPT_PREFIX" "share/gimp/*"
 ### Copy system theme support
-find_bin "gsettings*"
-find_bin "sed*"
+bundle "bin/gsettings*"
+bundle "bin/sed*"
 ### Copy GTK inspector support
-find_lib "libEGL*"
-find_lib "libGL*"
-find_lib "dri*"
+bundle "lib/libEGL*"
+bundle "lib/libGL*"
+bundle "lib/dri*"
 conf_app LIBGL_DRIVERS_PATH "$OPT_PREFIX" "${LIB_DIR}/${LIB_SUBDIR}dri"
 
 ## Plug-ins
-find_bin "uname*"
+bundle "bin/uname*"
 conf_app GIMP3_PLUGINDIR "$OPT_PREFIX" "${LIB_DIR}/${LIB_SUBDIR}gimp/*"
 conf_app GI_TYPELIB_PATH "$OPT_PREFIX" "${LIB_DIR}/${LIB_SUBDIR}girepository-*"
 ### Copy JavaScript plug-ins support
-find_bin "gjs*"
+bundle "bin/gjs*"
 ### Copy Lua plug-ins support (NOT WORKING)
-#find_bin "lua*"
-#find_lib "liblua*"
+#bundle "bin/lua*"
+#bundle "lib/liblua*"
 ### Copy Python plug-ins support
-find_bin "python*"
-find_lib "python*.*"
+bundle "bin/python*"
+bundle "lib/python*.*"
 conf_app PYTHONPATH "/usr" "${LIB_DIR}/${LIB_SUBDIR}python3.11"
 
 ## Final adjustments
