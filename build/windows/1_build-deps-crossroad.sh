@@ -63,13 +63,19 @@ crossroad w64 gimp --run="${GIMP_DIR}build/windows/1_build-deps-crossroad.sh"
 else
 
 ## Install the required (pre-built) packages for babl, GEGL and GIMP
-crossroad source msys2
-crossroad install $(cat ${GIMP_DIR}build/windows/all-deps-uni.txt |
-                    sed "s/\${MINGW_PACKAGE_PREFIX}-//g" | sed 's/\\//g')
-if [ $? -ne 0 ]; then
-  echo "Installation of pre-built dependencies failed.";
-  exit 1;
-fi
+## Crossroad is too prone to fail at downloading deps so let's retry infinitely
+installed=false
+while [ $installed = false ]; do
+  crossroad source msys2
+  crossroad install $(cat ${GIMP_DIR}build/windows/all-deps-uni.txt |
+                      sed "s/\${MINGW_PACKAGE_PREFIX}-//g"          | sed 's/\\//g')
+
+  if [ $? -eq 0 ]; then
+    installed=true
+  else
+    echo -e '\033[31m(ERROR)\033[0m:Installation of pre-built dependencies failed. Trying again...'
+  fi
+done
 
 ## Prepare env (no env var is needed, all are auto set to CROSSROAD_PREFIX)
 export ARTIFACTS_SUFFIX="-cross"
