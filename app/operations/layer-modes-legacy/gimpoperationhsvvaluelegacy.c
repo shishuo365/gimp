@@ -81,35 +81,42 @@ gimp_operation_hsv_value_legacy_process (GeglOperation       *op,
   gfloat                 *layer      = layer_p;
   gfloat                 *mask       = mask_p;
   gfloat                  opacity    = layer_mode->opacity;
+  gint                    total      = samples * 4;
+  gfloat                  layer_hsv[total];
+  gfloat                  out_hsv[total];
+  gfloat                  out_rgb[total];
 
-  while (samples--)
+  /* Convert the entire sample first, then use the HSV values from out_rgb
+   * as needed. */
+  babl_process (babl_fish (babl_format ("R'G'B'A float"), babl_format ("HSVA float")),
+                layer, layer_hsv, samples);
+  babl_process (babl_fish (babl_format ("R'G'B'A float"), babl_format ("HSVA float")),
+                in, out_hsv, samples);
+
+  for (gint i = 0; i < samples; i++)
+    out_hsv2[(i * 4) + 2] = layer_hsv2[(i * 4) + 2];
+
+  babl_process (babl_fish (babl_format ("HSVA float"), babl_format ("R'G'B'A float")),
+                out_hsv2, out_rgb, samples);
+
+  for (gint i = 0; i < samples; i++)
     {
-      gfloat layer_hsv[3], out_hsv[3];
-      gfloat out_rgb[3];
       gfloat comp_alpha, new_alpha;
+      gint   offset = i * 4;
 
-      comp_alpha = MIN (in[ALPHA], layer[ALPHA]) * opacity;
+      comp_alpha = MIN (in[offset + ALPHA], layer[offset + ALPHA]) * opacity;
       if (mask)
         comp_alpha *= *mask;
 
-      new_alpha = in[ALPHA] + (1.0f - in[ALPHA]) * comp_alpha;
+      new_alpha = in[offset + ALPHA] + (1.0f - in[offset + ALPHA]) * comp_alpha;
 
       if (comp_alpha && new_alpha)
         {
           gint   b;
           gfloat ratio = comp_alpha / new_alpha;
 
-          babl_process (babl_fish (babl_format ("R'G'B' float"), babl_format ("HSV float")),
-                        layer, layer_hsv, 1);
-          babl_process (babl_fish (babl_format ("R'G'B' float"), babl_format ("HSV float")),
-                        in, out_hsv, 1);
-
-          out_hsv[2] = layer_hsv[2];
-          babl_process (babl_fish (babl_format ("HSV float"), babl_format ("R'G'B' float")),
-                        out_hsv, out_rgb, 1);
-
           for (b = RED; b < ALPHA; b++)
-            out[b] = out_rgb[b] * ratio + in[b] * (1.0f - ratio);
+            out[offset + b] = out_rgb[offset + b] * ratio + in[offset + b] * (1.0f - ratio);
         }
       else
         {
@@ -117,15 +124,11 @@ gimp_operation_hsv_value_legacy_process (GeglOperation       *op,
 
           for (b = RED; b < ALPHA; b++)
             {
-              out[b] = in[b];
+              out[offset + b] = in[offset + b];
             }
         }
 
-      out[ALPHA] = in[ALPHA];
-
-      in    += 4;
-      layer += 4;
-      out   += 4;
+      out[offset + ALPHA] = in[offset + ALPHA];
 
       if (mask)
         mask++;
