@@ -7,6 +7,8 @@ else
   archsArray=('-x86')
 fi
 
+pacman --noconfirm -S --needed binutils
+
 
 # (we extract and link DWARF .debug symbols to
 # make possible save space with Inno custom install)

@@ -8,9 +8,6 @@ param ($revision = '0',
        $GIMP64 = 'gimp-x64',
        $GIMPA64 = 'gimp-a64')
 
-# This script needs a bit of MSYS2 to work
-$Env:CHERE_INVOKING = "yes"
-
 
 # 1. GET INNO
 Write-Output "(INFO): installing Inno"
@@ -30,12 +27,10 @@ Write-Output "(INFO): Installed Inno: $inno_version"
 
 ## Get Inno install path
 $INNO_PATH = Get-ItemProperty (Resolve-Path Registry::'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup*') | Select-Object -ExpandProperty InstallLocation
-Set-Alias iscc "$INNO_PATH\iscc.exe"
-
-## Get Inno install path (fallback)
 #$log = Get-Content ..\innosetup.log | Select-String ISCC.exe
 #pattern = '(?<=filename: ).+?(?=\\ISCC.exe)'
 #$INNO_PATH = [regex]::Matches($log, $pattern).Value
+Set-Alias iscc "$INNO_PATH\iscc.exe"
 
 
 # 2. GET GLOBAL INFO
@@ -56,7 +51,6 @@ if ($GIMP_CI_WIN_INSTALLER -and $GIMP_CI_WIN_INSTALLER -match '[0-9]')
     Write-Host "(WARNING): The revision is being made on CI, more updated deps than necessary may be packaged." -ForegroundColor yellow
     $revision = $GIMP_CI_WIN_INSTALLER
   }
-
 if ($revision -ne '0')
   {
     $APPVER = "$gimp_version.$revision"
@@ -65,17 +59,13 @@ if ($revision -ne '0')
 Write-Output "(INFO): GIMP version: $APPVER"
 
 ## FIXME: Our Inno scripts can't construct an one-arch installer
-if (-not (Test-Path "$GIMP32"))
+$supported_archs = "$GIMP32","$GIMP64","$GIMPA64"
+foreach ($bundle in $supported_archs)
   {
-    Write-Host "(ERROR): $GIMP32 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
-  }
-if (-not (Test-Path "$GIMP64"))
-  {
-    Write-Host "(ERROR): $GIMP64 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
-  }
-if (-not (Test-Path "$GIMPA64"))
-  {
-    Write-Host "(ERROR): $GIMPA64 bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
+    if (-not (Test-Path "$bundle"))
+      {
+        Write-Host "(ERROR): $bundle bundle not found. You need all the three archs bundles to make the installer." -ForegroundColor red
+      }
   }
 if ((-not (Test-Path "$GIMP32")) -or (-not (Test-Path "$GIMP64")) -or (-not (Test-Path "$GIMPA64")))
   {
@@ -150,33 +140,23 @@ fix_msg $INNO_PATH\Languages\Unofficial
 
 ## GIMP revision on about dialog
 ## FIXME: This should be done with Inno scripting
-if ($GITLAB_CI)
+foreach ($bundle in $supported_archs)
   {
-    $supported_archs = "$GIMP32","$GIMP64","$GIMPA64"
-    foreach ($bundle in $supported_archs)
-      {
-        (Get-Content "$bundle\share\gimp\*\gimp-release") | Foreach-Object {$_ -replace "revision=0","revision=$revision"} |
-        Set-Content "$bundle\share\gimp\*\gimp-release"
-      }
+    (Get-Content "$bundle\share\gimp\*\gimp-release") | Foreach-Object {$_ -replace "revision=0","revision=$revision"} |
+    Set-Content "$bundle\share\gimp\*\gimp-release"
   }
 
-## FIXME: We can't do this on CI
-if (-not $GITLAB_CI)
+## Split .debug symbols
+Write-Output "(INFO): extracting .debug symbols from bundles"
+#https://github.com/msys2/msys2-installer/issues/85
+. "C:/msys64/msys2_shell.cmd" -defterm -no-start -mingw32 -here -c "build/windows/installer/3_dist-gimp-inno_sym.sh"
+if ($Env:PROCESSOR_ARCHITECTURE -eq 'ARM64')
   {
-    Write-Output "(INFO): extracting .debug symbols from bundles"
-
-    #$Env:MSYSTEM = "MINGW32"
-    #C:\msys64\usr\bin\bash -lc 'bash build/windows/installer/3_dist-gimp-inno_sym.sh' | Out-Null
-
-    if ($Env:PROCESSOR_ARCHITECTURE -eq 'ARM64')
-      {
-        $Env:MSYSTEM = "CLANGARM64"
-      }
-    else
-      {
-        $Env:MSYSTEM = "CLANG64"
-      }
-    C:\msys64\usr\bin\bash -lc 'bash build/windows/installer/3_dist-gimp-inno_sym.sh' | Out-Null
+    . "C:/msys64/msys2_shell.cmd" -defterm -no-start -clangarm64 -here -c "build/windows/installer/3_dist-gimp-inno_sym.sh"
+  }
+else
+  {
+    . "C:/msys64/msys2_shell.cmd" -defterm -no-start -clang64 -here -c "build/windows/installer/3_dist-gimp-inno_sym.sh"
   }
 
 
@@ -194,6 +174,12 @@ $gimp_api_version = Get-Content "$CONFIG_PATH"                                  
 ## Compile installer
 Set-Location build\windows\installer
 iscc -DGIMP_VERSION="$gimp_version" -DREVISION="$revision" -DGIMP_APP_VERSION="$gimp_app_version" -DGIMP_API_VERSION="$gimp_api_version" -DBUILD_DIR="$BUILD_DIR" -DGIMP_DIR="$GIMP_BASE" -DDIR32="$GIMP32" -DDIR64="$GIMP64" -DDIRA64="$GIMPA64" -DDEPS_DIR="$GIMP_BASE" -DDDIR32="$GIMP32" -DDDIR64="$GIMP64" -DDDIRA64="$GIMPA64" -DDEBUG_SYMBOLS -DLUA -DPYTHON base_gimp3264.iss | Out-Null
+
+foreach ($bundle in $supported_archs)
+  {
+    (Get-Content "$GIMP_BASE\$bundle\share\gimp\*\gimp-release") | Foreach-Object {$_ -replace "revision=$revision","revision=0"} |
+    Set-Content "$GIMP_BASE\$bundle\share\gimp\*\gimp-release"
+  }
 
 ## Test if the installer was created and return success/failure.
 if (Test-Path "$GIMP_BASE\$INSTALLER" -PathType Leaf)
