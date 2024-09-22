@@ -74,14 +74,21 @@ gimp_c_test_run (GimpProcedure        *procedure,
   format2     = babl_format ("RGBA float");
   format2_bpp = babl_format_get_bytes_per_pixel (format2);
   fcolormap   = (gfloat *) gimp_palette_get_colormap (palette, format2, &n_colormap_colors, &n_bytes);
-  GIMP_TEST_END(fcolormap != NULL && n_colormap_colors == n_colors  &&
+  GIMP_TEST_END(fcolormap != NULL && n_colormap_colors == n_colors &&
                 format2 != format                                  &&
                 format2_bpp > format_bpp                           &&
                 n_colormap_colors * format2_bpp == n_bytes)
 
   GIMP_TEST_START("Comparing fourth palette color's RGB components from colormap in float format")
   gegl_color_get_pixel (color, format2, rgba);
-  GIMP_TEST_END(fcolormap[4 * GIMP_TEST_COLOR_IDX] == rgba[0]                  &&
+  printf("fcolormap: %f %f %f vs %f %f %f\n",
+         fcolormap[4 * GIMP_TEST_COLOR_IDX],
+         fcolormap[4 * GIMP_TEST_COLOR_IDX + 1],
+         fcolormap[4 * GIMP_TEST_COLOR_IDX + 2],
+         rgba[0],
+         rgba[1],
+         rgba[2]);
+  GIMP_TEST_END(fcolormap[4 * GIMP_TEST_COLOR_IDX] == rgba[0]     &&
                 fcolormap[4 * GIMP_TEST_COLOR_IDX + 1] == rgba[1] &&
                 fcolormap[4 * GIMP_TEST_COLOR_IDX + 2]== rgba[2])
 

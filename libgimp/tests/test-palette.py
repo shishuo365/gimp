@@ -61,6 +61,12 @@ rgb = rgb_bytes.get_data()
 palette_r = struct.unpack('f', rgb[:4])
 palette_g = struct.unpack('f', rgb[4:8])
 palette_b = struct.unpack('f', rgb[8:12])
+print("Comparing {} {} {} vs {} {} {}\n".format(colormap_r,
+                                                colormap_g,
+                                                colormap_b,
+                                                palette_r,
+                                                palette_g,
+                                                palette_b))
 gimp_assert("Comparing fourth palette color's RGB components from colormap in float format",
             colormap_r == palette_r and
             colormap_g == palette_g and
