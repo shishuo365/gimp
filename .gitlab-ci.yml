@@ -477,7 +477,16 @@ gimp-win-a64:
   needs: ["deps-win-a64"]
   stage: gimp
   script:
-    - C:\msys64\usr\bin\bash -lc "bash build/windows/2_build-gimp-msys2.sh"
+    # MSYS2 doesn't expand GitLab variables from PS: https://gitlab.com/gitlab-org/gitlab-runner/-/issues/1699
+    - if [ ! "$CI_MERGE_REQUEST_LABELS" =~ '5. Windows Installer' ] && [ -z "$GIMP_CI_WIN_INSTALLER" ] && [ ! " $CI_MERGE_REQUEST_LABELS" =~ '5. Microsoft Store' ] && [ -z "$GIMP_CI_MS_STORE" ]; then
+        C:\msys64\usr\bin\bash -lc "bash build/windows/2_build-gimp-msys2.sh";
+      elif [ "$CI_MERGE_REQUEST_LABELS" =~ '5. Windows Installer' ] || [ "$GIMP_CI_WIN_INSTALLER" ]; then
+        C:\msys64\usr\bin\bash -lc "GIMP_CI_WIN_INSTALLER=true bash build/windows/2_build-gimp-msys2.sh";
+      elif [ "$CI_MERGE_REQUEST_LABELS" =~ '5. Microsoft Store' ] || [ "$GIMP_CI_MS_STORE" ]; then
+        C:\msys64\usr\bin\bash -lc "GIMP_CI_MS_STORE=true bash build/windows/2_build-gimp-msys2.sh";
+      else
+        C:\msys64\usr\bin\bash -lc "GIMP_CI_WIN_INSTALLER=true GIMP_CI_MS_STORE=true bash build/windows/2_build-gimp-msys2.sh";
+      fi
   artifacts:
     paths:
       - gimp-a64/

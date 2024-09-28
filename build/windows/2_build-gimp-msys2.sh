@@ -44,11 +44,17 @@ done
 # Build GIMP
 if [ -z "$GITLAB_CI" ] && [ "$1" != "--relocatable" ]; then
   echo "(INFO): GIMP will be built in MSYS2 friendly mode"
-  export MESON_OPTIONS='-Drelocatable-bundle=no -Dwindows-installer=false -Dms-store=false'
+  export bundle_option='-Drelocatable-bundle=no'
 elif [ "$GITLAB_CI" ] || [ "$1" = '--relocatable' ]; then
   echo "(INFO): GIMP will be built as a relocatable bundle"
-  export MESON_OPTIONS='-Drelocatable-bundle=yes -Dwindows-installer=true -Dms-store=true'
+  export bundle_option='-Drelocatable-bundle=yes'
 fi
+if [ "$CI_MERGE_REQUEST_LABELS" =~ '5. Windows Installer' ] || [ "$GIMP_CI_WIN_INSTALLER" ] || [ "$1" = '--relocatable' ]; then
+  export installer_option='-Dwindows-installer=true'
+elif [ "$CI_MERGE_REQUEST_LABELS" =~ '5. Microsoft Store' ] || [ "$GIMP_CI_MS_STORE" ] || [ "$1" = '--relocatable' ]; then
+  export store_option='-Dms-store=true'
+fi
+export MESON_OPTIONS="$bundle_option $installer_option $store_option"
 
 if [ ! -f "_build/build.ninja" ]; then
   mkdir -p "_build" && cd "_build"
