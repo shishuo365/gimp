@@ -16,7 +16,7 @@ HERE="$(dirname "$(readlink -f "${0}")")"
 export PATH="$HERE"/usr/bin/:"$PATH"
 export LD_LIBRARY_PATH="$HERE"/usr/lib/:"$HERE"/usr/lib/x86_64-linux-gnu/:"$HERE"/usr/lib64/:"$LD_LIBRARY_PATH"
 export XDG_DATA_DIRS="$HERE"/usr/share/:"$XDG_DATA_DIRS"
-LD_LINUX="$HERE/LD_LINUX_WILD --inhibit-cache"
+LD_LINUX="$HERE/LD_LINUX_WILD"
 
 ## GTK-related paths
 export GIO_MODULE_DIR="$HERE"/GIO_MODULE_DIR_WILD/modules
@@ -48,4 +48,4 @@ echo '.py   (Python) plug-ins     | supported.'
 echo '.scm  (ScriptFu) plug-ins   | supported.'
 echo '.vala (Vala) plug-ins       | supported.'
 
-LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libc.so.6 "$HERE"/usr/bin/gimp-GIMP_APP_VERSION "$@"
+exec "${LD_LINUX}" "$HERE"/usr/bin/gimp-GIMP_APP_VERSION "$@"
