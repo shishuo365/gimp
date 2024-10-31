@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 # Parameters
-param ($revision = '0',
+param ($revision = "$GIMP_CI_WIN_INSTALLER",
        $GIMP_BASE = "$PWD",
        $BUILD_DIR = "$GIMP_BASE\_build",
        $GIMP32 = 'gimp-x86',
@@ -45,18 +45,15 @@ if (-not (Test-Path "$CONFIG_PATH"))
 ## Get AppVer (GIMP version as we use on Inno)
 ### AppVer without revision
 $gimp_version = Get-Content "$CONFIG_PATH"                               | Select-String 'GIMP_VERSION'        |
-                Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
+                Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''} |
+                Foreach-Object {$_ -replace '(.+?)-.+','$1'}
 $APPVER = $gimp_version
 ### Revisioned AppVer
-if ($CI_PIPELINE_SOURCE -ne 'schedule' -and $GIMP_CI_WIN_INSTALLER -and $GIMP_CI_WIN_INSTALLER -match '[0-9]')
+if ($revision -notmatch '[0-9]' -or $CI_PIPELINE_SOURCE -eq 'schedule' )
   {
-    Write-Host "(WARNING): The revision is being made on CI, more updated deps than necessary may be packaged." -ForegroundColor yellow
-    $revision = $GIMP_CI_WIN_INSTALLER
+    $revision = '0'
   }
-if ($revision -ne '0')
-  {
-    $APPVER = "$gimp_version.$revision"
-  }
+$APPVER = "$gimp_version.$revision"
 Write-Output "(INFO): GIMP version: $APPVER"
 
 ## FIXME: Our Inno scripts can't construct an one-arch installer
