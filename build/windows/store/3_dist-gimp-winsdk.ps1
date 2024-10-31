@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 # Parameters
-param ($revision = '0',
+param ($revision = "$GIMP_CI_MS_STORE",
        $wack = 'Non-WACK',
        $build_dir = '_build',
        $a64_bundle = 'gimp-a64',
@@ -34,22 +34,18 @@ if (-not (Test-Path "$config_path"))
     exit 1
   }
 
-## Figure out if GIMP is unstable (dev)
+$gimp_version = Get-Content "$config_path"                               | Select-String 'GIMP_VERSION'        |
+Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
+
+## Figure out if GIMP is unstable (dev version)
 $gimp_unstable = Get-Content "$config_path"                               | Select-String 'GIMP_UNSTABLE' |
                  Foreach-Object {$_ -replace '#define GIMP_UNSTABLE ',''}
-if ($gimp_unstable -eq '1')
+if ($gimp_unstable -eq '1' -or $gimp_version -match 'RC[0-9]')
   {
-    $dev = '1'
+    $dev = "1"
   }
 
-$gimp_version = Get-Content "$config_path"                               | Select-String 'GIMP_VERSION'        |
-                Foreach-Object {$_ -replace '#define GIMP_VERSION "',''} | Foreach-Object {$_ -replace '"',''}
-if ($gimp_version -match 'RC[0-9]')
-  {
-    $dev = 'rc'
-  }
-
-## Get Identity Name (the dir shown in Explorer)
+## Get Identity Name (the dir shown in Explorer etc)
 if ($dev)
   {
     $IDENTITY_NAME="GIMP.GIMPPreview"
@@ -66,35 +62,22 @@ $major = ($GIMP_APP_VERSION.Split('.'))[0]
 $minor = ($GIMP_APP_VERSION.Split('.'))[-1]
 
 ## Get GIMP micro version
-$micro = ($gimp_version.Split('.'))[-1]
-if ($dev -eq 'rc')
+$micro = ($gimp_version.Split('.'))[-1] -replace '(.+?)-.+','$1'
+if ($micro -ne '0')
   {
-    $micro = $micro -replace ".{4}$"
-  }
-
-$micro_digit = $micro
-if ($micro -eq '0')
-  {
-    $micro_digit = ''
+    $micro_digit = $micro
   }
 
 ## Get GIMP revision
-if ($CI_PIPELINE_SOURCE -ne 'schedule' -and $GIMP_CI_MS_STORE -like 'MSIXUPLOAD_*')
-  {
-    Write-Host "(WARNING): The revision is being made on CI, more updated deps than necessary may be packaged." -ForegroundColor yellow
-    $revision = $GIMP_CI_MS_STORE -replace 'MSIXUPLOAD_',''
-  }
-
-## (Special case when using WACK locally)
-if ($revision -eq 'WACK')
-  {
-    $revision = "0"
-    $wack = "WACK"
-  }
-
-if ($revision -ne '0')
+$revision = $revision -replace 'MSIXUPLOAD_',''
+if ($revision -match '[1-9]')
   {
     $revision_text = ", revision: $revision"
+  }
+
+if ($revision -eq '' -or $CI_PIPELINE_SOURCE -eq 'schedule' -or $revision -eq 'WACK')
+  {
+    $revision = "0"
   }
 
 ## Get custom GIMP version (major.minor.micro+revision.0), a compliant way to publish to Partner Center:
@@ -312,7 +295,7 @@ Rename-Item .gitignore.bak .gitignore
 
 # 5. CERTIFY .MSIX OR .MSIXBUNDLE WITH WACK (OPTIONAL)
 # (Partner Center does the same thing before publishing)
-if (-not $GITLAB_CI -and $wack -eq 'WACK')
+if (-not $GITLAB_CI -and ($wack -eq 'WACK' -or $revision -eq 'WACK'))
   {
     ## Prepare file naming
     ## (appcert CLI does NOT allow relative paths)
