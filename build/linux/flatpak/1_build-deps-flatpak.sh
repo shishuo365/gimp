@@ -12,6 +12,16 @@ fi
 
 
 # Install part of the deps
+if [ ! -f '/usr/bin/flatpak-builder' ]; then
+  echo -e '\033[31m(ERROR)\033[0m: flatpak-builder not found. Please, install it using your package manager.'
+  exit 1
+fi
+builder_version=$(flatpak-builder --version | sed 's/flatapk-builder-//' | sed 's/.//g')
+if [ "$builder_version" -lt '143' ]; then
+  echo -e "\033[31m(ERROR)\033[0m: installed flatpak-builder is too old. Our .json manifest requires 1.4.3 at minimum."
+  exit 1
+fi
+
 if [ -z "$GITLAB_CI" ]; then
   flatpak update -y
   flatpak remote-add --if-not-exists --user --from gnome-nightly https://nightly.gnome.org/gnome-nightly.flatpakrepo
