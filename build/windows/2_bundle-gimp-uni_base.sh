@@ -180,8 +180,11 @@ bundle "$GIMP_PREFIX" bin/gimp*.exe
 bundle "$GIMP_PREFIX" bin/libgimp*.dll
 ### Bundled just to promote GEGL. See: https://gitlab.gnome.org/GNOME/gimp/-/issues/10580
 bundle "$GIMP_PREFIX" bin/gegl*.exe
-### Needed for 'Show image graph'. See: https://gitlab.gnome.org/GNOME/gimp/-/issues/6045
-bundle "$MSYS_PREFIX" bin/dot.exe
+if [ "$GIMP_UNSTABLE" ]; then
+  ### Needed for 'Show image graph'. See: https://gitlab.gnome.org/GNOME/gimp/-/issues/6045
+  bundle "$MSYS_PREFIX" bin/dot.exe
+  bundle "$MSYS_PREFIX" bin/config6
+fi
 ### Needed to not pollute output. See: https://gitlab.gnome.org/GNOME/gimp/-/issues/8877
 bundle "$MSYS_PREFIX" bin/gdbus.exe
 ### Needed for hyperlink support etc. See: https://gitlab.gnome.org/GNOME/gimp/-/issues/12288
