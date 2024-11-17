@@ -555,7 +555,7 @@ libarchive = dependency('libarchive')
 # Check for debug console (Win32)
 
 if platform_windows
-  conf.set('ENABLE_WIN32_DEBUG_CONSOLE', get_option('win32-debug-console'))
+  conf.set('ENABLE_WIN32_DEBUG_CONSOLE', get_option('win32-debug-console').enable_auto_if(not stable or not release).enabled())
 endif
 
 ################################################################################
