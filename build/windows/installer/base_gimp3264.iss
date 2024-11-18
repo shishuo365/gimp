@@ -1470,7 +1470,7 @@ begin
 		InterpFile := ExpandConstant('{app}\lib\gimp\{#GIMP_API_VERSION}\interpreters\pygimp.interp');
     DebugMsg('PrepareInterp','Writing interpreter file for gimp-python: ' + InterpFile);
 
-#ifdef GIMP_UNSTABLE
+#if Defined(GIMP_UNSTABLE) && GIMP_UNSTABLE != ""
 	  #define PYTHON="python.exe"
 #else
 	  #define PYTHON="pythonw.exe"
