@@ -119,9 +119,9 @@ function download_langs ([array]$langsArray)
     }
 }
 ### Official translations not present in a Inno release yet
-#$langsArray_Official = $xmlObject.iso_639_entries.iso_639_entry | Select-Object -ExpandProperty inno_code     |
-#                       Where-Object { $_ -like "*Languages*" }  | Where-Object { $_ -notlike "*Unofficial*" }
-#download_langs $langsArray_Official
+$langsArray_Official = $xmlObject.iso_639_entries.iso_639_entry | Select-Object -ExpandProperty inno_code     |
+                       Where-Object { $_ -like "*Languages*" }  | Where-Object { $_ -notlike "*Unofficial*" }
+download_langs $langsArray_Official
 ### unofficial translations (of unknown quality and maintenance)
 New-Item "$INNO_PATH\Languages\Unofficial" -ItemType Directory -Force | Out-Null
 $langsArray_unofficial = $xmlObject.iso_639_entries.iso_639_entry | Select-Object -ExpandProperty inno_code |
