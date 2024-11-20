@@ -20,8 +20,9 @@ else
   {
     $cpu_arch = 'x64'
   }
-$win_sdk_path = Resolve-Path "C:\Program Files (x86)\Windows Kits\10\bin\*\$cpu_arch" | Select-Object -Last 1
-Write-Output "(INFO): Installed WinSDK: $win_sdk_path"
+$win_sdk_version = Get-ItemProperty Registry::'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Microsoft SDKs\Windows\v10.0' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProductVersion
+$win_sdk_path = "$(Get-ItemProperty Registry::'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Microsoft SDKs\Windows\v10.0' | Select-Object -ExpandProperty InstallationFolder)bin\${win_sdk_version}.0\$cpu_arch"
+Write-Output "(INFO): Installed WinSDK: $win_sdk_version"
 
 # Needed tools from Windows SDK
 Set-Alias 'makepri' "$win_sdk_path\makepri.exe"
