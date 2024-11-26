@@ -298,6 +298,23 @@ done
 ### Undo the mess that go-appimagetool makes on the prefix which breaks babl and GEGL
 cp -r $APP_DIR/lib/* $USR_DIR/${LIB_DIR}
 rm -r $APP_DIR/lib
+lib_array=($(find $USR_DIR -iname *.so*))
+fix_rpath ()
+{
+  for lib in "${lib_array[@]}"; do
+    existing_rpath=$(objdump -x $1 | grep 'R.*PATH' | grep -v 'usr/bin' | sed -e 's/RUNPATH//g' -e 's/ //g')
+    added_rpath="$(realpath --relative-to=${1%/*} ${lib%/*})"
+    patchelf --set-rpath $(echo "$existing_rpath:\$ORIGIN/$added_rpath" | sed 's/^://') $1
+  done
+}
+for lib in "${lib_array[@]}"; do
+  fix_rpath $lib
+done
+for exec in "${exec_array[@]}"; do
+  if [[ ! "$exec" =~ 'ELF' ]]; then
+    fix_rpath $exec
+  fi
+done
 ### Remove unnecessary files bunbled by go-appimagetool
 wipe_usr ${LIB_DIR}/${LIB_SUBDIR}gconv
 wipe_usr ${LIB_DIR}/${LIB_SUBDIR}gdk-pixbuf-*/gdk-pixbuf-query-loaders
