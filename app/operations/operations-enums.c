@@ -16,6 +16,7 @@ gimp_layer_color_space_get_type (void)
   {
     { GIMP_LAYER_COLOR_SPACE_AUTO, "GIMP_LAYER_COLOR_SPACE_AUTO", "auto" },
     { GIMP_LAYER_COLOR_SPACE_RGB_LINEAR, "GIMP_LAYER_COLOR_SPACE_RGB_LINEAR", "rgb-linear" },
+    { GIMP_LAYER_COLOR_SPACE_RGB_NON_LINEAR, "GIMP_LAYER_COLOR_SPACE_RGB_NON_LINEAR", "rgb-non-linear" },
     { GIMP_LAYER_COLOR_SPACE_RGB_PERCEPTUAL, "GIMP_LAYER_COLOR_SPACE_RGB_PERCEPTUAL", "rgb-perceptual" },
     { GIMP_LAYER_COLOR_SPACE_LAB, "GIMP_LAYER_COLOR_SPACE_LAB", "lab" },
     { 0, NULL, NULL }
@@ -25,6 +26,7 @@ gimp_layer_color_space_get_type (void)
   {
     { GIMP_LAYER_COLOR_SPACE_AUTO, NC_("layer-color-space", "Auto"), NULL },
     { GIMP_LAYER_COLOR_SPACE_RGB_LINEAR, NC_("layer-color-space", "RGB (linear)"), NULL },
+    { GIMP_LAYER_COLOR_SPACE_RGB_NON_LINEAR, NC_("layer-color-space", "RGB (non-linear)"), NULL },
     { GIMP_LAYER_COLOR_SPACE_RGB_PERCEPTUAL, NC_("layer-color-space", "RGB (perceptual)"), NULL },
     { GIMP_LAYER_COLOR_SPACE_LAB, NC_("layer-color-space", "LAB"), NULL },
     { 0, NULL, NULL }
